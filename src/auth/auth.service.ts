@@ -1,11 +1,16 @@
-import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto';
+import { LoginDto } from './dto';
 import { ConfigService } from '@nestjs/config';
 import { Role } from '@prisma/client';
+import { UserEntity } from './entities';
 
 @Injectable()
 export class AuthService {
@@ -15,9 +20,12 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  // Sign up a new user
-  async signup(dto: SignupDto) {
-    const { email, password } = dto;
+  // Helper function to handle user creation (with optional role)
+  private async signUpUser(
+    DTO: SignupDto,
+    role: Role = Role.CUSTOMER, // Default to Role.CUSTOMER if no role is provided
+  ): Promise<UserEntity> {
+    const { email, password } = DTO;
 
     // Check if the user already exists
     const existingUser = await this.prisma.user.findUnique({
@@ -30,16 +38,26 @@ export class AuthService {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create a new user
-    const newUser = await this.prisma.user.create({
+    // Create the new user
+    const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        role: Role.CUSTOMER, // default role
+        role: role, // Assign the role (either passed or default)
       },
     });
 
-    return this.generateTokens(newUser);
+    return new UserEntity(user); // Return the user as an entity
+  }
+
+  // Create a new user
+  async signUpCustomer(dto: SignupDto): Promise<UserEntity> {
+    return this.signUpUser(dto); // No role specified, defaults to user role
+  }
+
+  // Create an admin user
+  async signUpAdmin(dto: SignupDto): Promise<UserEntity> {
+    return this.signUpUser(dto, Role.ADMIN); // Explicitly set role to ADMIN
   }
 
   // Login an existing user
@@ -90,7 +108,9 @@ export class AuthService {
       });
 
       // Fetch the user based on the decoded token
-      const user = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: decoded.sub },
+      });
       if (!user || user.refreshToken !== refreshToken) {
         throw new ForbiddenException('Invalid refresh token');
       }
