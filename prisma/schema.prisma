@@ -1,14 +1,73 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Prisma schema file: prisma/schema.prisma
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Database configuration
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+// User model
+model User {
+  id          Int           @id @default(autoincrement())
+  email       String        @unique
+  password    String
+  role        Role          @default(CUSTOMER)
+  reservations Reservation[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("users") // Custom table name
+}
+
+// Enum for user roles
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+// Movie model
+model Movie {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  genre       String
+  poster      String      // URL for the movie poster
+  showtimes   Showtime[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("movies")
+}
+
+// Showtime model
+model Showtime {
+  id          Int          @id @default(autoincrement())
+  movieId     Int
+  startTime   DateTime
+  endTime     DateTime
+  capacity    Int          // Total number of seats available
+  reservations Reservation[]
+  movie       Movie        @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([movieId, startTime]) // Ensure no duplicate showtimes for the same movie
+  @@map("showtimes")
+}
+
+// Reservation model
+model Reservation {
+  id          Int        @id @default(autoincrement())
+  userId      Int
+  showtimeId  Int
+  seatsReserved Int
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  showtime    Showtime   @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@map("reservations")
 }
