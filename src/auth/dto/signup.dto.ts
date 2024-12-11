@@ -5,6 +5,7 @@ import {
   IsString,
   MinLength,
 } from '@nestjs/class-validator';
+import { Role } from '@prisma/client';
 
 export class SignupDto {
   @IsEmail({}, { message: 'Invalid email address' })
@@ -18,5 +19,5 @@ export class SignupDto {
 
   @IsString()
   @IsOptional()
-  role?: string; // Optional, defaults to 'CUSTOMER' in the database
+  role?: Role; // Optional, defaults to 'CUSTOMER' in the database
 }

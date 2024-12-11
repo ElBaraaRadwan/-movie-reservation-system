@@ -16,8 +16,13 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  createUser(@Body() createUserDto: CreateUserDto) {
+    return this.userService.createUser(createUserDto);
+  }
+
+  @Post()
+  createAdmin(@Body() createUserDto: CreateUserDto) {
+    return this.userService.createAdmin(createUserDto);
   }
 
   @Get()
@@ -26,8 +31,8 @@ export class UserController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+  findUserById(@Param('id') id: string) {
+    return this.userService.findUserById(+id);
   }
 
   @Patch(':id')
