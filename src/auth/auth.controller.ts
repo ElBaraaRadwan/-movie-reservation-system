@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto, SignupDto } from './dto';
-import { RolesGuard } from './guard';
+import { JwtGuard, RolesGuard } from './guard';
 import { Roles } from './decorator';
 import { Role } from '@prisma/client';
 
@@ -14,7 +14,7 @@ export class AuthController {
     return this.authService.signUpCustomer(dto);
   }
 
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, JwtGuard)
   @Roles(Role.ADMIN)
   @Post('signup/admin')
   signUpAdmin(@Body() dto: SignupDto) {

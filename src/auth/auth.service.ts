@@ -10,7 +10,7 @@ import { SignupDto } from './dto';
 import { LoginDto } from './dto';
 import { ConfigService } from '@nestjs/config';
 import { Role } from '@prisma/client';
-import { UserEntity } from './entities';
+import { UserEntity } from '../user/entities';
 
 @Injectable()
 export class AuthService {
