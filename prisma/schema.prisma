@@ -12,13 +12,14 @@ generator client {
 
 // User model
 model User {
-  id          Int           @id @default(autoincrement())
-  email       String        @unique
-  password    String
-  role        Role          @default(CUSTOMER)
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  password     String
+  role         Role          @default(CUSTOMER)
   reservations Reservation[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  refreshToken String? // Nullable field to store the refresh token
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@map("users") // Custom table name
 }
@@ -35,25 +36,25 @@ model Movie {
   title       String
   description String
   genre       String
-  poster      String      // URL for the movie poster
+  poster      String // URL for the movie poster
   showtimes   Showtime[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@map("movies")
 }
 
 // Showtime model
 model Showtime {
-  id          Int          @id @default(autoincrement())
-  movieId     Int
-  startTime   DateTime
-  endTime     DateTime
-  capacity    Int          // Total number of seats available
+  id           Int           @id @default(autoincrement())
+  movieId      Int
+  startTime    DateTime
+  endTime      DateTime
+  capacity     Int // Total number of seats available
   reservations Reservation[]
-  movie       Movie        @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  movie        Movie         @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@unique([movieId, startTime]) // Ensure no duplicate showtimes for the same movie
   @@map("showtimes")
@@ -61,13 +62,13 @@ model Showtime {
 
 // Reservation model
 model Reservation {
-  id          Int        @id @default(autoincrement())
-  userId      Int
-  showtimeId  Int
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  showtimeId    Int
   seatsReserved Int
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  showtime    Showtime   @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
-  createdAt   DateTime   @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  showtime      Showtime @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
 
   @@map("reservations")
 }

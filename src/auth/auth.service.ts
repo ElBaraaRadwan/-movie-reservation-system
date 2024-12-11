@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -24,7 +24,7 @@ export class AuthService {
       where: { email },
     });
     if (existingUser) {
-      throw new Error('Email already in use');
+      throw new ForbiddenException('Email already in use');
     }
 
     // Hash the password
@@ -39,7 +39,7 @@ export class AuthService {
       },
     });
 
-    return this.signToken(newUser);
+    return this.generateTokens(newUser);
   }
 
   // Login an existing user
@@ -49,30 +49,56 @@ export class AuthService {
     // Find the user by email
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new ForbiddenException('Invalid credentials');
     }
 
     // Validate the password
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      throw new Error('Invalid credentials');
+      throw new ForbiddenException('Invalid credentials');
     }
 
-    return this.signToken(user);
+    return this.generateTokens(user);
   }
 
   // Generate a JWT token
-  async signToken(user: {
+  private async generateTokens(user: {
     id: number;
     email: string;
     role: Role;
-  }): Promise<{ accessToken: string }> {
+  }): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = { sub: user.id, email: user.email, role: user.role };
-    const secret = this.config.get('JWT_SECRET');
-    const token = await this.JWT.signAsync(payload, {
+
+    const accessToken = await this.JWT.signAsync(payload, {
       expiresIn: '30m',
-      secret,
+      secret: this.config.get('JWT_SECRET'),
     });
-    return { accessToken: token };
+
+    const refreshToken = await this.JWT.signAsync(payload, {
+      expiresIn: '7d',
+      secret: this.config.get('JWT_SECRET'),
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  async refreshAccessToken(refreshToken: string) {
+    try {
+      // Validate the refresh token
+      const decoded = this.JWT.verify(refreshToken, {
+        secret: this.config.get<string>('JWT_REFRESH_SECRET'),
+      });
+
+      // Fetch the user based on the decoded token
+      const user = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
+      if (!user || user.refreshToken !== refreshToken) {
+        throw new ForbiddenException('Invalid refresh token');
+      }
+
+      // Generate a new access token
+      return (await this.generateTokens(user)).accessToken;
+    } catch (error) {
+      throw new ForbiddenException('Invalid or expired refresh token');
+    }
   }
 }
