@@ -24,8 +24,8 @@ export class AuthController {
   @UseGuards(RolesGuard, JwtGuard)
   @Roles(Role.ADMIN)
   @Post('signup/admin')
-  signUpAdmin(@Body() dto: SignupDto) {
-    return this.authService.signUpAdmin(dto);
+  createAdmin(@Body() dto: SignupDto) {
+    return this.authService.createAdmin(dto);
   }
 
   @Post('login')
@@ -34,7 +34,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtGuard)
-  @Get('me')
+  @Get('profile')
   getUserInfo(@Request() req) {
     return req.user;
   }

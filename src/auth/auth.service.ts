@@ -57,7 +57,7 @@ export class AuthService {
   }
 
   // Create an admin user
-  async signUpAdmin(dto: SignupDto): Promise<UserEntity> {
+  async createAdmin(dto: SignupDto): Promise<UserEntity> {
     return this.signUpUser(dto, Role.ADMIN); // Explicitly set role to ADMIN
   }
 
