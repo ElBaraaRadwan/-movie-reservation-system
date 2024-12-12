@@ -20,4 +20,8 @@ export class SignupDto {
   @IsString()
   @IsOptional()
   role?: Role; // Optional, defaults to 'CUSTOMER' in the database
+
+  @IsString()
+  @IsNotEmpty({ message: 'Username cannot be empty' })
+  username: string;
 }

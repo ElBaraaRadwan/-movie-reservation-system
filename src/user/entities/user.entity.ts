@@ -1,4 +1,5 @@
 import { Exclude, Expose } from '@nestjs/class-transformer';
+import { Role } from '@prisma/client';
 
 export class UserEntity {
   @Expose()
@@ -11,7 +12,10 @@ export class UserEntity {
   password: string;
 
   @Expose()
-  role: string;
+  role: Role;
+
+  @Expose()
+  username: string;
 
   @Expose()
   createdAt: Date;

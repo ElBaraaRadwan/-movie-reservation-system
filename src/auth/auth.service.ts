@@ -25,7 +25,7 @@ export class AuthService {
     DTO: SignupDto,
     role: Role = Role.CUSTOMER, // Default to Role.CUSTOMER if no role is provided
   ): Promise<UserEntity> {
-    const { email, password } = DTO;
+    const { email, password, username } = DTO;
 
     // Check if the user already exists
     const existingUser = await this.prisma.user.findUnique({
@@ -42,6 +42,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         email,
+        username,
         password: hashedPassword,
         role: role, // Assign the role (either passed or default)
       },
@@ -84,8 +85,14 @@ export class AuthService {
     id: number;
     email: string;
     role: Role;
+    username: string;
   }): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username,
+    };
 
     const accessToken = await this.JWT.signAsync(payload, {
       expiresIn: '30m',
@@ -120,5 +127,30 @@ export class AuthService {
     } catch (error) {
       throw new ForbiddenException('Invalid or expired refresh token');
     }
+  }
+
+  async validateGoogleUser({
+    googleId,
+    email,
+    username,
+  }: {
+    googleId: string;
+    email: string;
+    username: string;
+  }): Promise<UserEntity> {
+    let user = await this.prisma.user.findUnique({ where: { googleId } });
+
+    // Hash the Google ID to use as a password
+    const password = await bcrypt.hash(googleId, 10);
+    // If the user doesn't exist, create a new user with the Google ID
+    if (!user) {
+      user = await this.prisma.user.upsert({
+        where: { email },
+        update: { googleId },
+        create: { googleId, email, username, password },
+      });
+    }
+
+    return user;
   }
 }

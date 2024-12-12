@@ -21,6 +21,6 @@
     "resolveJsonModule": true,
     "noFallthroughCasesInSwitch": false
   },
-  "include": ["src/**/*.ts", "src/types/custom.d.ts"], // Include custom types
+  "include": ["src/**/*.ts", "types/custom.d.ts"], // Include custom types
   "exclude": ["node_modules"]
 }
