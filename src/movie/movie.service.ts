@@ -1,26 +1,58 @@
-import { Injectable } from '@nestjs/common';
-import { CreateMovieDto } from './dto/create-movie.dto';
-import { UpdateMovieDto } from './dto/update-movie.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateMovieDto, UpdateMovieDto } from './dto';
 
 @Injectable()
 export class MovieService {
-  create(createMovieDto: CreateMovieDto) {
-    return 'This action adds a new movie';
+  constructor(private readonly prisma: PrismaService) {}
+
+  // Create a new movie
+  async create(createMovieDto: CreateMovieDto) {
+    return await this.prisma.movie.create({
+      data: createMovieDto,
+    });
   }
 
-  findAll() {
-    return `This action returns all movie`;
+  // Find all movies
+  async findAll() {
+    return await this.prisma.movie.findMany();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} movie`;
+  // Find a movie by Title
+  async findOneByName(title: string) {
+    const movie = await this.prisma.movie.findFirst({
+      where: { title },
+    });
+    if (!movie) {
+      throw new NotFoundException(`Movie with Title ${title} not found`);
+    }
+    return movie;
   }
 
-  update(id: number, updateMovieDto: UpdateMovieDto) {
-    return `This action updates a #${id} movie`;
+  // Update a movie by Title
+  async update(title: string, updateMovieDto: UpdateMovieDto) {
+    const movie = await this.prisma.movie.findFirst({
+      where: { title },
+    });
+    if (!movie) {
+      throw new NotFoundException(`Movie with Title ${title} not found`);
+    }
+    return await this.prisma.movie.update({
+      where: { id: movie.id },
+      data: updateMovieDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} movie`;
+  // Delete a movie by Title
+  async remove(title: string) {
+    const movie = await this.prisma.movie.findFirst({
+      where: { title },
+    });
+    if (!movie) {
+      throw new NotFoundException(`Movie with Title ${title} not found`);
+    }
+    return await this.prisma.movie.delete({
+      where: { id: movie.id },
+    });
   }
 }
