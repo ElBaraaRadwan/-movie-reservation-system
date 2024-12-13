@@ -8,13 +8,13 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
-    CloudinaryModule,
+    CloudinaryModule, // Explicitly import CloudinaryModule
     MulterModule.registerAsync({
-      imports: [CloudinaryModule],
-      useFactory: (cloudinaryService: CloudinaryService) => ({
+      imports: [CloudinaryModule], // Import CloudinaryModule for Multer
+      useFactory: async (cloudinaryService: CloudinaryService) => ({
         storage: cloudinaryService.storage,
       }),
-      inject: [CloudinaryService],
+      inject: [CloudinaryService], // Inject CloudinaryService
     }),
   ],
   controllers: [MovieController],

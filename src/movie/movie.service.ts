@@ -127,13 +127,14 @@ export class MovieService {
 
   // Find all movies
   async findAll() {
-    return await this.prisma.movie.findMany();
+    return await this.prisma.movie.findMany({ include: { showtimes: true } });
   }
 
   // Find a movie by Title
   async findOneByName(title: string) {
     const movie = await this.prisma.movie.findFirst({
       where: { title },
+      include: { showtimes: true },
     });
     if (!movie) {
       throw new NotFoundException(`Movie with Title ${title} not found`);
