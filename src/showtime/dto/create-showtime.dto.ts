@@ -1,12 +1,10 @@
 import {
   IsInt,
-  IsString,
   IsNotEmpty,
   Min,
-  MaxLength,
   Max,
 } from '@nestjs/class-validator';
-import { IsCustomDateFormat } from '../decorator';
+import { IsCustomDateFormat, IsLocationFormat } from '../decorator';
 
 export class CreateShowtimeDto {
   @IsInt()
@@ -29,8 +27,8 @@ export class CreateShowtimeDto {
   @IsNotEmpty()
   capacity: number;
 
-  @IsString()
-  @MaxLength(255)
-  @IsNotEmpty()
+  @IsLocationFormat({
+    message: 'Location must follow the format "City, Venue"',
+  })
   location: string;
 }
