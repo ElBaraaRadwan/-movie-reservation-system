@@ -23,7 +23,7 @@ export class CreateMovieDto {
   @IsUrl()
   poster: string;
 
-  @IsString()
+  @IsUrl()
   @IsNotEmpty()
   videoUrl: string;
 
