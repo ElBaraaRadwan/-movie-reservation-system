@@ -1,15 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ShowtimeService } from './showtime.service';
-import { CreateShowtimeDto } from './dto/create-showtime.dto';
-import { UpdateShowtimeDto } from './dto/update-showtime.dto';
+import { CreateShowtimeDto } from './dto';
+import { UpdateShowtimeDto } from './dto';
 
 @Controller('showtime')
 export class ShowtimeController {
   constructor(private readonly showtimeService: ShowtimeService) {}
 
   @Post()
-  create(@Body() createShowtimeDto: CreateShowtimeDto) {
-    return this.showtimeService.create(createShowtimeDto);
+  create(@Body() createDto: CreateShowtimeDto, @Param('title') title: string) {
+    return this.showtimeService.create(createDto, title);
   }
 
   @Get()
@@ -17,18 +25,13 @@ export class ShowtimeController {
     return this.showtimeService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.showtimeService.findOne(+id);
+  @Patch(':title')
+  update(@Param('title') title: string, @Body() updateDto: UpdateShowtimeDto) {
+    return this.showtimeService.update(title, updateDto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateShowtimeDto: UpdateShowtimeDto) {
-    return this.showtimeService.update(+id, updateShowtimeDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.showtimeService.remove(+id);
+  @Delete(':title')
+  remove(@Param('title') title: string) {
+    return this.showtimeService.remove(title);
   }
 }
