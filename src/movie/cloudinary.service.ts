@@ -16,10 +16,12 @@ export class CloudinaryService {
 
     this.storage = new CloudinaryStorage({
       cloudinary: cloudinary,
-      params: {
-        folder: 'movies', // The folder in Cloudinary where uploads will be stored
-        allowed_formats: ['jpg', 'jpeg', 'png', 'mp4', 'mkv'], // Allowed file formats
-        public_id: (req, file) => file.originalname.split('.')[0], // File name without extension
+      params: async (req, file) => {
+        return {
+          folder: 'movies', // The folder in Cloudinary where uploads will be stored
+          format: file.mimetype.split('/')[1], // Allowed file formats
+          public_id: file.originalname.split('.')[0], // File name without extension
+        };
       },
     });
   }

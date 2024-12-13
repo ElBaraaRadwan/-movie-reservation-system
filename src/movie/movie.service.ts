@@ -29,6 +29,38 @@ export class MovieService {
     });
   }
 
+  // Helper function to determine video resolution based on file size
+  private determineResolution(fileSize: number): string[] {
+    // File size in bytes
+    const sizeInMB = fileSize / (1024 * 1024); // Convert to MB
+
+    if (sizeInMB > 1000) return ['4K', '1080p', '720p'];
+    if (sizeInMB > 500) return ['1080p', '720p'];
+    if (sizeInMB > 100) return ['720p', '480p'];
+    return ['480p'];
+  }
+
+  private validateFiles(files: {
+    poster?: Express.Multer.File;
+    video?: Express.Multer.File;
+  }) {
+    const allowedImageTypes = ['image/jpeg', 'image/png'];
+    const allowedVideoTypes = ['video/mp4', 'video/mkv'];
+
+    const posterFile = files.poster[0];
+    const videoFile = files.video[0];
+
+    if (!allowedImageTypes.includes(posterFile.mimetype)) {
+      throw new BadRequestException('Invalid poster file type');
+    }
+
+    if (!allowedVideoTypes.includes(videoFile.mimetype)) {
+      throw new BadRequestException('Invalid video file type');
+    }
+
+    return { posterFile, videoFile };
+  }
+
   // Create a new movie
   async create(
     dto: CreateMovieDto,
@@ -42,19 +74,10 @@ export class MovieService {
 
     try {
       // Validate files
-      const allowedImageTypes = ['image/jpeg', 'image/png'];
-      const allowedVideoTypes = ['video/mp4', 'video/mkv'];
+      const { posterFile, videoFile } = this.validateFiles(files);
 
-      const posterFile = files.poster[0];
-      const videoFile = files.video[0];
-
-      if (!allowedImageTypes.includes(posterFile.mimetype)) {
-        throw new BadRequestException('Invalid poster file type');
-      }
-
-      if (!allowedVideoTypes.includes(videoFile.mimetype)) {
-        throw new BadRequestException('Invalid video file type');
-      }
+      // Determine resolution based on video file size
+      const resolution = this.determineResolution(videoFile.size);
 
       // Upload files to Cloudinary
       const posterUpload = await this.uploadFileToCloudinary(posterFile);
@@ -68,7 +91,7 @@ export class MovieService {
           duration,
           poster: posterUpload.secure_url,
           videoUrl: videoUpload.secure_url,
-          resolution: ['1080p', '720p'], // Example resolutions
+          resolution,
         },
       });
     } catch (error) {
