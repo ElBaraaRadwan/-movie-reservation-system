@@ -45,10 +45,26 @@ export class ShowtimeService {
   async update(title: string, updateDto: UpdateShowtimeDto) {
     const movie = await this.movieService.findOneByName(title);
 
+    const showtime = movie.showtimes.find(
+      (st) => st.startTime.getTime() === startTime.getTime(),
+    );
+    const startTime = movie.showtimes[0].startTime; // Select the first showtime
+
+    if (!showtime) {
+      throw new NotFoundException(
+        `Showtime with start time ${startTime} not found for movie with title ${title}`,
+      );
+    }
+
     updateDto.movieId = movie.id; // Add movieId to updateDto
 
     return await this.prisma.showtime.update({
-      where: { id: movie.id },
+      where: {
+        movieId_startTime: {
+          movieId: movie.id,
+          startTime: showtime.startTime,
+        },
+      },
       data: updateDto,
     });
   }
@@ -56,8 +72,21 @@ export class ShowtimeService {
   async remove(title: string) {
     const movie = await this.movieService.findOneByName(title);
 
+    if (!movie.showtimes || movie.showtimes.length === 0) {
+      throw new NotFoundException(
+        `No showtimes found for movie with title ${title}`,
+      );
+    }
+
+    const startTime = movie.showtimes[0].startTime; // Select the first showtime
+
     return await this.prisma.showtime.delete({
-      where: { id: movie.id },
+      where: {
+        movieId_startTime: {
+          movieId: movie.id,
+          startTime: startTime,
+        },
+      },
     });
   }
 }
