@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFiles,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
@@ -26,6 +27,11 @@ export class MovieController {
     files: { poster?: Express.Multer.File; video?: Express.Multer.File },
   ) {
     return this.movieService.create(dto, files);
+  }
+
+  @Get('stream/:title')
+  streamMovie(@Param('title') title: string, req: Request, res: Response) {
+    return this.movieService.streamMovie(title, req, res);
   }
 
   @Get()

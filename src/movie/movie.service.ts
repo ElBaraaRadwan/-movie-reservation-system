@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMovieDto, UpdateMovieDto } from './dto';
 import { CloudinaryService } from './cloudinary/cloudinary.service';
 import { Movie } from '@prisma/client';
+import { Request, Response } from 'express';
+import * as path from 'path';
 
 @Injectable()
 export class MovieService {
@@ -101,6 +105,23 @@ export class MovieService {
       });
     } catch (error) {
       throw new BadRequestException(`Failed to upload files: ${error}`);
+    }
+  }
+
+  async streamMovie(title: string, req: Request, res: Response) {
+    try {
+      // Fetch movie details (assuming filePath is stored in DB)
+      const movie = await this.findOneByName(title);
+      if (!movie || !movie.videoUrl) {
+        throw new HttpException('Movie not found', HttpStatus.NOT_FOUND);
+      }
+
+      const filePath = path.resolve(movie.videoUrl); // Resolve full path to video file
+      const range = req.headers.range;
+
+      await this.cloudinary.streamMovie(filePath, res, range);
+    } catch (error) {
+      throw new HttpException('Movie not found', HttpStatus.NOT_FOUND);
     }
   }
 
