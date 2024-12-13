@@ -39,8 +39,14 @@ export class MovieController {
   }
 
   @Patch(':title')
-  update(@Param('title') title: string, @Body() updateDto: UpdateMovieDto) {
-    return this.movieService.update(title, updateDto);
+  @UseInterceptors(FileInterceptor('files'))
+  update(
+    @Param('title') title: string,
+    @Body() updateDto: UpdateMovieDto,
+    @UploadedFiles()
+    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
+  ) {
+    return this.movieService.update(title, updateDto, files);
   }
 
   @Delete(':title')

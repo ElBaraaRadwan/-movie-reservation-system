@@ -116,17 +116,42 @@ export class MovieService {
   }
 
   // Update a movie by Title
-  async update(title: string, updateMovieDto: UpdateMovieDto) {
+  async update(
+    title: string,
+    updateDto: UpdateMovieDto,
+    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
+  ) {
     const movie = await this.prisma.movie.findFirst({
       where: { title },
     });
     if (!movie) {
       throw new NotFoundException(`Movie with Title ${title} not found`);
     }
-    return await this.prisma.movie.update({
-      where: { id: movie.id },
-      data: updateMovieDto,
-    });
+
+    try {
+      // Validate files
+      const { posterFile, videoFile } = this.validateFiles(files);
+
+      // Determine resolution based on video file size
+      const resolution = this.determineResolution(videoFile.size);
+
+      // Upload files to Cloudinary
+      const posterUpload = await this.uploadFileToCloudinary(posterFile);
+      const videoUpload = await this.uploadFileToCloudinary(videoFile);
+
+      // Update the movie with the new data
+      return await this.prisma.movie.update({
+        where: { id: movie.id },
+        data: {
+          ...updateDto,
+          poster: posterUpload ? posterUpload.secure_url : movie.poster,
+          videoUrl: videoUpload ? videoUpload.secure_url : movie.videoUrl,
+          resolution: resolution || movie.resolution,
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException(`Failed to upload files: ${error}`);
+    }
   }
 
   // Delete a movie by Title
