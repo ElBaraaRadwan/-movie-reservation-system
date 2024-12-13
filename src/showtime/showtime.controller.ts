@@ -21,6 +21,11 @@ export class ShowtimeController {
   }
 
   @Get()
+  findOne(@Body() title: string) {
+    return this.showtimeService.findOne(title);
+  }
+
+  @Get()
   findAll() {
     return this.showtimeService.findAll();
   }
