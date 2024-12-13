@@ -6,7 +6,7 @@ import { ShowtimeModule } from './showtime/showtime.module';
 import { ReservationModule } from './reservation/reservation.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
-import { CloudinaryService } from './movie/cloudinary.service';
+import { CloudinaryService } from './movie/cloudinary/cloudinary.service';
 
 @Module({
   imports: [
