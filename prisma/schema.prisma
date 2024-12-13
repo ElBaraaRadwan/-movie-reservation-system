@@ -39,6 +39,9 @@ model Movie {
   description String
   genre       String
   poster      String // URL for the movie poster
+  videoUrl    String
+  resolution  String[] // 720p, 1080p, etc.
+  duration    Int    // Duration in minutes
   showtimes   Showtime[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -53,6 +56,7 @@ model Showtime {
   startTime    DateTime
   endTime      DateTime
   capacity     Int // Total number of seats available
+  location     String
   reservations Reservation[]
   movie        Movie         @relation(fields: [movieId], references: [id], onDelete: Cascade)
   createdAt    DateTime      @default(now())

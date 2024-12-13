@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsUrl } from '@nestjs/class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsUrl,
+} from '@nestjs/class-validator';
 
 export class CreateMovieDto {
   @IsNotEmpty()
@@ -17,7 +23,16 @@ export class CreateMovieDto {
   @IsUrl()
   poster: string;
 
-  @IsNotEmpty()
   @IsString()
-  duration: string;
+  @IsNotEmpty()
+  videoUrl: string;
+
+  @IsNotEmpty()
+  @IsArray()
+  @IsString({ each: true })
+  resolution: string[];
+
+  @IsNotEmpty()
+  @IsNumber()
+  duration: number;
 }
