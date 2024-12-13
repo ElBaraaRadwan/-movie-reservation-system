@@ -1,15 +1,28 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ReservationService } from './reservation.service';
-import { CreateReservationDto } from './dto';
-import { UpdateReservationDto } from './dto';
+import { CreateReservationDto, UpdateReservationDto } from './dto';
 
 @Controller('reservation')
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
-  @Post()
-  create(@Body() createDto: CreateReservationDto) {
-    return this.reservationService.create(createDto);
+  @Post('create/:movieTitle')
+  create(
+    @Param('movieTitle') movieTitle: string,
+    @Body() createDto: CreateReservationDto,
+  ) {
+    return this.reservationService.create(
+      { ...createDto, movieTitle },
+      1, // Example userId (replace with actual user context)
+    );
   }
 
   @Get()
@@ -17,18 +30,16 @@ export class ReservationController {
     return this.reservationService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.reservationService.findOne(+id);
+  @Patch('update/:movieTitle')
+  update(
+    @Param('movieTitle') movieTitle: string,
+    @Body() updateDto: UpdateReservationDto,
+  ) {
+    return this.reservationService.update(movieTitle, updateDto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: UpdateReservationDto) {
-    return this.reservationService.update(+id, updateDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.reservationService.remove(+id);
+  @Delete('delete/:movieTitle')
+  remove(@Param('movieTitle') movieTitle: string) {
+    return this.reservationService.remove(movieTitle);
   }
 }
