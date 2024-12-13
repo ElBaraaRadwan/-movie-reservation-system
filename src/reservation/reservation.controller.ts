@@ -6,17 +6,22 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { ReservationService } from './reservation.service';
 import { CreateReservationDto, UpdateReservationDto } from './dto';
+import { JwtGuard, RolesGuard } from 'src/auth/guard';
+import { Role } from '@prisma/client';
+import { Roles } from 'src/auth/decorator';
 
+@UseGuards(JwtGuard)
 @Controller('reservation')
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
-  @Post('create/:movieTitle')
+  @Post(':title')
   create(
-    @Param('movieTitle') movieTitle: string,
+    @Param('title') movieTitle: string,
     @Body() createDto: CreateReservationDto,
   ) {
     return this.reservationService.create(
@@ -25,21 +30,25 @@ export class ReservationController {
     );
   }
 
-  @Get()
+  @Get('/all')
   findAll() {
     return this.reservationService.findAll();
   }
 
-  @Patch('update/:movieTitle')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch(':title')
   update(
-    @Param('movieTitle') movieTitle: string,
+    @Param('title') movieTitle: string,
     @Body() updateDto: UpdateReservationDto,
   ) {
     return this.reservationService.update(movieTitle, updateDto);
   }
 
-  @Delete('delete/:movieTitle')
-  remove(@Param('movieTitle') movieTitle: string) {
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Delete(':title')
+  remove(@Param('title') movieTitle: string) {
     return this.reservationService.remove(movieTitle);
   }
 }
