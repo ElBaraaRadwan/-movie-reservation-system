@@ -83,6 +83,11 @@ export class MovieService {
       const posterUpload = await this.uploadFileToCloudinary(posterFile);
       const videoUpload = await this.uploadFileToCloudinary(videoFile);
 
+      if (await this.findOneByName(title))
+        throw new BadRequestException(
+          `Movie with Title ${title} already exists`,
+        );
+      // Create a new movie
       return await this.prisma.movie.create({
         data: {
           title,
@@ -121,9 +126,7 @@ export class MovieService {
     updateDto: UpdateMovieDto,
     files: { poster?: Express.Multer.File; video?: Express.Multer.File },
   ) {
-    const movie = await this.prisma.movie.findFirst({
-      where: { title },
-    });
+    const movie = await this.findOneByName(title);
     if (!movie) {
       throw new NotFoundException(`Movie with Title ${title} not found`);
     }
@@ -156,9 +159,7 @@ export class MovieService {
 
   // Delete a movie by Title
   async remove(title: string) {
-    const movie = await this.prisma.movie.findFirst({
-      where: { title },
-    });
+    const movie = await this.findOneByName(title);
     if (!movie) {
       throw new NotFoundException(`Movie with Title ${title} not found`);
     }
