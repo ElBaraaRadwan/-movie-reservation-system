@@ -36,7 +36,11 @@ export class ReservationService {
     });
   }
 
-  async update(movieTitle: string, updateDto: UpdateReservationDto) {
+  async update(
+    movieTitle: string,
+    updateDto: UpdateReservationDto,
+    userId: number,
+  ) {
     const showtime = await this.movieShowtime.findOne(movieTitle);
 
     const reservation = await this.prisma.reservation.findFirst({
@@ -50,12 +54,12 @@ export class ReservationService {
     }
 
     return await this.prisma.reservation.update({
-      where: { id: reservation.id },
+      where: { id: reservation.id, userId },
       data: updateDto,
     });
   }
 
-  async remove(movieTitle: string) {
+  async remove(movieTitle: string, userId: number) {
     const showtime = await this.movieShowtime.findOne(movieTitle);
 
     const reservation = await this.prisma.reservation.findFirst({
@@ -69,7 +73,7 @@ export class ReservationService {
     }
 
     return await this.prisma.reservation.delete({
-      where: { id: reservation.id },
+      where: { id: reservation.id, userId },
     });
   }
 }

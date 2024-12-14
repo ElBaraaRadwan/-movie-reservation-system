@@ -144,13 +144,29 @@ export class AuthService {
     const password = await bcrypt.hash(googleId, 10);
     // If the user doesn't exist, create a new user with the Google ID
     if (!user) {
-      user = await this.prisma.user.upsert({
-        where: { email },
-        update: { googleId },
-        create: { googleId, email, username, password },
+      user = await this.prisma.user.create({
+        data: {
+          googleId,
+          email,
+          username,
+          password,
+        },
       });
     }
 
-    return user;
+    return new UserEntity(user);
+  }
+
+  getGoogleAuthUrl(): string {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URIS');
+    const scope =
+      'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+    const responseType = 'code';
+    const accessType = 'offline';
+
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=${responseType}&access_type=${accessType}`;
+
+    return googleAuthUrl;
   }
 }

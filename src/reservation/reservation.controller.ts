@@ -12,7 +12,7 @@ import { ReservationService } from './reservation.service';
 import { CreateReservationDto, UpdateReservationDto } from './dto';
 import { JwtGuard, RolesGuard } from 'src/auth/guard';
 import { Role } from '@prisma/client';
-import { Roles } from 'src/auth/decorator';
+import { GetUser, Roles } from 'src/auth/decorator';
 
 @UseGuards(JwtGuard)
 @Controller('reservation')
@@ -23,10 +23,11 @@ export class ReservationController {
   create(
     @Param('title') movieTitle: string,
     @Body() createDto: CreateReservationDto,
+    @GetUser() user: any,
   ) {
     return this.reservationService.create(
       { ...createDto, movieTitle },
-      1, // Example userId (replace with actual user context)
+      user.id,
     );
   }
 
@@ -41,14 +42,15 @@ export class ReservationController {
   update(
     @Param('title') movieTitle: string,
     @Body() updateDto: UpdateReservationDto,
+    @GetUser() user: any,
   ) {
-    return this.reservationService.update(movieTitle, updateDto);
+    return this.reservationService.update(movieTitle, updateDto, user.id);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Delete(':title')
-  remove(@Param('title') movieTitle: string) {
-    return this.reservationService.remove(movieTitle);
+  remove(@Param('title') movieTitle: string, @GetUser() user: any) {
+    return this.reservationService.remove(movieTitle, user.id);
   }
 }

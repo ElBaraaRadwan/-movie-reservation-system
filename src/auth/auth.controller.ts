@@ -11,6 +11,7 @@ import { LoginDto, SignupDto } from './dto';
 import { JwtGuard, RolesGuard } from './guard';
 import { Roles } from './decorator';
 import { Role } from '@prisma/client';
+import { GetUser } from './decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -35,7 +36,7 @@ export class AuthController {
 
   @UseGuards(JwtGuard)
   @Get('profile')
-  getUserInfo(@Request() req) {
-    return req.user;
+  getUserInfo(@GetUser() user: any) {
+    return user;
   }
 }

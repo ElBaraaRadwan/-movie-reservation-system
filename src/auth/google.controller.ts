@@ -3,6 +3,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Redirect,
   Req,
   Res,
   UseGuards,
@@ -11,17 +12,19 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleGuard } from './guard';
 
-@UseGuards(GoogleGuard)
 @Controller('auth/google')
 export class GoogleController {
   constructor(private readonly authService: AuthService) {}
 
   @HttpCode(HttpStatus.OK)
   @Get()
+  @Redirect()
   googleLogin() {
-    // Deal with this later!
+    const googleAuthUrl = this.authService.getGoogleAuthUrl();
+    return { url: googleAuthUrl };
   }
 
+  @UseGuards(GoogleGuard)
   @Get('redirect')
   async googleRedirect(@Req() req: Request, @Res() res: Response) {
     const googleProfile = req.user as {

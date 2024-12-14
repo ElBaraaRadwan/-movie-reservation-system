@@ -16,7 +16,7 @@ import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtGuard, RolesGuard } from 'src/auth/guard';
-import { Roles } from 'src/auth/decorator';
+import { GetUser, Roles } from 'src/auth/decorator';
 import { Role } from '@prisma/client';
 
 @UseGuards(JwtGuard)
@@ -37,7 +37,11 @@ export class MovieController {
   }
 
   @Get('stream/:title')
-  streamMovie(@Param('title') title: string, req: Request, res: Response) {
+  streamMovie(
+    @Param('title') title: string,
+    req: Request,
+    res: Response,
+  ) {
     return this.movieService.streamMovie(title, req, res);
   }
 
