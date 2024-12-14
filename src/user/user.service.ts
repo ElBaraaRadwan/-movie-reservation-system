@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto';
 import { UserEntity } from './entities/user.entity';
@@ -8,7 +12,7 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Use function findUserById as Helper function
-  async findUserById(id: number): Promise<UserEntity> {
+  async findUserById(id: number): Promise<Omit<UserEntity, 'password'>> {
     const user = await this.prisma.user.findUnique({ where: { id } });
 
     if (!user) {
@@ -39,9 +43,20 @@ export class UserService {
 
   // Delete a user by id
   async remove(id: number): Promise<void> {
-    // Ensure the user exists first
-    await this.findUserById(id); // Using helper function to find user
+    try {
+      // Ensure the user exists first
+      const user = await this.prisma.user.findUnique({ where: { id } });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
 
-    await this.prisma.user.delete({ where: { id } });
+      await this.prisma.user.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      } else {
+        throw new InternalServerErrorException('Failed to delete user');
+      }
+    }
   }
 }

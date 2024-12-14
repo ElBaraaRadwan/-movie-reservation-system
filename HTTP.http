@@ -26,10 +26,38 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@example.com",
+  "email": "customer@example.com",
   "password": "admin123"
 }
 
 ### Get Profile
 GET http://localhost:3000/auth/profile
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE0MjUwMCwiZXhwIjoxNzM0MTQ0MzAwfQ.81sIs28IzvGtfQFiMyiTxL7DV830aKGVBUtSYelG5Ak
+
+
+# User Controller Requests
+
+### Get All Users
+# Only for Admin Require [ADMIN_TOKEN]
+GET http://localhost:3000/user/all
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MjI2MiwiZXhwIjoxNzM0MTQ0MDYyfQ.HGwGoomRwTBIUtQB0szjGJr0z1vsv2i4p8QnNo6q1o4
+
+### Get User by ID
+GET http://localhost:3000/user/8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE0MjQxNCwiZXhwIjoxNzM0MTQ0MjE0fQ.hJyARUccDmfBebmKvzEeXx9CnIwkmCcHw36I57jfybY
+
+### Update User
+PATCH http://localhost:3000/user/:id
+Content-Type: application/json
+Authorization: Bearer <USER_TOKEN>
+
+{
+  "username": "UpdatedUserName",
+  "email": "",
+  "password": ""
+}
+
+### Delete User
+# Only for Admin Require [ADMIN_TOKEN]
+DELETE http://localhost:3000/user/7
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MTI0NSwiZXhwIjoxNzM0MTQzMDQ1fQ.MvCPkvuZOKslz_FqFCe_PTCGln4MXjvH-FqsWUUKDuI
