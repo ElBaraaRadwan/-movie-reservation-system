@@ -1,0 +1,35 @@
+# Auth Controller Requests
+
+### Sign Up Customer
+POST http://localhost:3000/auth/signup/customer
+Content-Type: application/json
+
+{
+  "email": "customer@example.com",
+  "password": "password123",
+  "username": "customerUser"
+}
+
+### Sign Up Admin
+POST http://localhost:3000/auth/signup/admin
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDEzNzUyMywiZXhwIjoxNzM0MTM5MzIzfQ.57Df_fAoQZhOgHtYBwHcCBVMVajlJweKxk44MGTmgR0
+
+{
+  "email": "admin@example.com",
+  "password": "admin123",
+  "username": "adminUser"
+}
+
+### Login
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "customer@example.com",
+  "password": "password123"
+}
+
+### Get Profile
+GET http://localhost:3000/auth/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDEzNzUyMywiZXhwIjoxNzM0MTM5MzIzfQ.57Df_fAoQZhOgHtYBwHcCBVMVajlJweKxk44MGTmgR0
