@@ -7,9 +7,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtStrategy } from './strategies';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { PassportModule } from '@nestjs/passport';
+import { GoogleController } from './google.controller';
 
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, GoogleController],
   providers: [AuthService, PrismaService, JwtStrategy, GoogleStrategy],
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }), // Register Passport for JWT authentication

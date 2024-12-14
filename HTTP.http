@@ -32,7 +32,7 @@ Content-Type: application/json
 
 ### Get Profile
 GET http://localhost:3000/auth/profile
-Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE0MjUwMCwiZXhwIjoxNzM0MTQ0MzAwfQ.81sIs28IzvGtfQFiMyiTxL7DV830aKGVBUtSYelG5Ak
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE4MzUzNCwiZXhwIjoxNzM0MTg1MzM0fQ.YtgnSeJJDiWF2dkfyftzuCpO45D7HfycN7RsD5SHpPI
 
 
 # User Controller Requests
@@ -44,20 +44,27 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsI
 
 ### Get User by ID
 GET http://localhost:3000/user/8
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE0MjQxNCwiZXhwIjoxNzM0MTQ0MjE0fQ.hJyARUccDmfBebmKvzEeXx9CnIwkmCcHw36I57jfybY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE4NDAyNiwiZXhwIjoxNzM0MTg1ODI2fQ.zDv-ZXbprRUF-aa7J6no7hpn95q0UDcQEf37Q6ikQ4o
 
 ### Update User
-PATCH http://localhost:3000/user/:id
+PATCH http://localhost:3000/user/8
 Content-Type: application/json
-Authorization: Bearer <USER_TOKEN>
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE4NDAyNiwiZXhwIjoxNzM0MTg1ODI2fQ.zDv-ZXbprRUF-aa7J6no7hpn95q0UDcQEf37Q6ikQ4o
 
 {
-  "username": "UpdatedUserName",
-  "email": "",
-  "password": ""
+  "username": "UpdatedCustomerName"
 }
 
 ### Delete User
 # Only for Admin Require [ADMIN_TOKEN]
 DELETE http://localhost:3000/user/7
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MTI0NSwiZXhwIjoxNzM0MTQzMDQ1fQ.MvCPkvuZOKslz_FqFCe_PTCGln4MXjvH-FqsWUUKDuI
+
+
+# Google Controller Requests
+
+### Google Login
+GET http://localhost:3000/auth/google
+
+### Google Redirect
+GET http://localhost:3000/auth/google/redirect
