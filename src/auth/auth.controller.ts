@@ -25,8 +25,8 @@ export class AuthController {
   @UseGuards(RolesGuard, JwtGuard)
   @Roles(Role.ADMIN)
   @Post('signup/admin')
-  createAdmin(@Body() dto: SignupDto) {
-    return this.authService.createAdmin(dto);
+  createAdmin(@Body() dto: SignupDto, @Request() req: any) {
+    return this.authService.createAdmin(dto, req);
   }
 
   @Post('login')

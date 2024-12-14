@@ -24,7 +24,7 @@ export class AuthService {
   private async signUpUser(
     DTO: SignupDto,
     role: Role = Role.CUSTOMER, // Default to Role.CUSTOMER if no role is provided
-  ): Promise<UserEntity> {
+  ): Promise<Omit<UserEntity, 'password'>> {
     const { email, password, username } = DTO;
 
     // Check if the user already exists
@@ -48,17 +48,26 @@ export class AuthService {
       },
     });
 
-    return new UserEntity(user); // Return the user as an entity
+    // Remove password from user object
+    const { password: _, ...userWithoutPassword } = user;
+
+    return userWithoutPassword as Omit<UserEntity, 'password'>; // Return the user without the password field
   }
 
   // Create a new user
-  async signUpCustomer(dto: SignupDto): Promise<UserEntity> {
-    return this.signUpUser(dto); // No role specified, defaults to user role
+  async signUpCustomer(dto: SignupDto): Promise<Omit<UserEntity, 'password'>> {
+    return await this.signUpUser(dto); // No role specified, defaults to user role
   }
 
   // Create an admin user
-  async createAdmin(dto: SignupDto): Promise<UserEntity> {
-    return this.signUpUser(dto, Role.ADMIN); // Explicitly set role to ADMIN
+  async createAdmin(
+    dto: SignupDto,
+    req: any,
+  ): Promise<Omit<UserEntity, 'password'>> {
+    if (req.user.role !== Role.ADMIN) {
+      throw new ForbiddenException('Only admins can create admin users');
+    }
+    return await this.signUpUser(dto, Role.ADMIN); // Explicitly set role to ADMIN
   }
 
   // Login an existing user
@@ -102,6 +111,12 @@ export class AuthService {
     const refreshToken = await this.JWT.signAsync(payload, {
       expiresIn: '7d',
       secret: this.config.get('JWT_SECRET'),
+    });
+
+    // Store the refresh token in the user's record in the database
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken },
     });
 
     return { accessToken, refreshToken };

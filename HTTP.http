@@ -6,7 +6,7 @@ Content-Type: application/json
 
 {
   "email": "customer@example.com",
-  "password": "password123",
+  "password": "admin123",
   "username": "customerUser"
 }
 
@@ -26,10 +26,10 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-  "email": "customer@example.com",
-  "password": "password123"
+  "email": "admin@example.com",
+  "password": "admin123"
 }
 
 ### Get Profile
 GET http://localhost:3000/auth/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDEzNzUyMywiZXhwIjoxNzM0MTM5MzIzfQ.57Df_fAoQZhOgHtYBwHcCBVMVajlJweKxk44MGTmgR0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MTI0NSwiZXhwIjoxNzM0MTQzMDQ1fQ.MvCPkvuZOKslz_FqFCe_PTCGln4MXjvH-FqsWUUKDuI
