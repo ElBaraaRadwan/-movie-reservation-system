@@ -4,7 +4,7 @@ import {
   IsNumber,
   IsString,
   IsUrl,
-} from '@nestjs/class-validator';
+} from 'class-validator';
 
 export class CreateMovieDto {
   @IsNotEmpty()

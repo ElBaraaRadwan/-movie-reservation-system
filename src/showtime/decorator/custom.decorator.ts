@@ -3,7 +3,7 @@ import {
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface,
-} from '@nestjs/class-validator';
+} from 'class-validator';
 
 @ValidatorConstraint({ async: false })
 export class IsCustomDateFormatConstraint
@@ -32,7 +32,9 @@ export function IsCustomDateFormat(validationOptions?: ValidationOptions) {
 }
 
 @ValidatorConstraint({ async: false })
-export class IsLocationFormatConstraint implements ValidatorConstraintInterface {
+export class IsLocationFormatConstraint
+  implements ValidatorConstraintInterface
+{
   validate(value: string): boolean {
     const regex = /^[A-Za-z\s]+,\s[A-Za-z\s]+$/; // Regex for "City, Venue" format
     return typeof value === 'string' && regex.test(value);

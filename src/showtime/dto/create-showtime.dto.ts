@@ -3,7 +3,7 @@ import {
   IsNotEmpty,
   Min,
   Max,
-} from '@nestjs/class-validator';
+} from 'class-validator';
 import { IsCustomDateFormat, IsLocationFormat } from '../decorator';
 
 export class CreateShowtimeDto {

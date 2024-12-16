@@ -6,38 +6,40 @@ import {
   Param,
   Delete,
   UseGuards,
+  Post,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { UpdateUserDto } from './dto';
+import { CreateUserDto, UpdateUserDto } from './dto';
 import { JwtGuard, RolesGuard } from 'src/auth/guard';
 import { Roles } from 'src/auth/decorator';
 import { Role } from '@prisma/client';
 
-@UseGuards(JwtGuard)
+// @UseGuards(JwtGuard)
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-  @Get('/all')
+  @Get('find')
+  findOne(@Query() query: Record<string, any>) {
+    return this.userService.findOne(query);
+  }
+
+  @Get('all')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN) // Only admin can view all users
   findAll() {
     return this.userService.findAll();
   }
 
-  @Get(':id')
-  findUserById(@Param('id') id: string) {
-    return this.userService.findUserById(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  @Patch(':email')
+  update(@Param('email') email: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(email, updateUserDto);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN) // Only admin can delete users
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  remove(@Param('id') id: number) {
+    return this.userService.remove(id);
   }
 }

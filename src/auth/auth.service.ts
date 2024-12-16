@@ -2,15 +2,16 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { SignupDto } from './dto';
-import { LoginDto } from './dto';
 import { ConfigService } from '@nestjs/config';
-import { Role } from '@prisma/client';
 import { UserEntity } from '../user/entities';
+import { UserService } from 'src/user/user.service';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -18,170 +19,88 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly JWT: JwtService,
     private readonly config: ConfigService,
+    private readonly userService: UserService,
   ) {}
 
-  // Helper function to handle user creation (with optional role)
-  private async signUpUser(
-    DTO: SignupDto,
-    role: Role = Role.CUSTOMER, // Default to Role.CUSTOMER if no role is provided
-  ): Promise<Omit<UserEntity, 'password'>> {
-    const { email, password, username } = DTO;
-
-    // Check if the user already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-    });
-    if (existingUser) {
-      throw new ConflictException('Email already in use');
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create the new user
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        username,
-        password: hashedPassword,
-        role: role, // Assign the role (either passed or default)
-      },
-    });
-
-    // Remove password from user object
-    const { password: _, ...userWithoutPassword } = user;
-
-    return userWithoutPassword as Omit<UserEntity, 'password'>; // Return the user without the password field
-  }
-
-  // Create a new user
-  async signUpCustomer(dto: SignupDto): Promise<Omit<UserEntity, 'password'>> {
-    return await this.signUpUser(dto); // No role specified, defaults to user role
-  }
-
-  // Create an admin user
-  async createAdmin(
-    dto: SignupDto,
-    req: any,
-  ): Promise<Omit<UserEntity, 'password'>> {
-    if (req.user.role !== Role.ADMIN) {
-      throw new ForbiddenException('Only admins can create admin users');
-    }
-    return await this.signUpUser(dto, Role.ADMIN); // Explicitly set role to ADMIN
-  }
-
-  // Login an existing user
-  async login(dto: LoginDto) {
-    const { email, password } = dto;
-
-    // Find the user by email
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw new ForbiddenException('Invalid credentials');
-    }
-
-    // Validate the password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      throw new ForbiddenException('Invalid credentials');
-    }
-
-    return this.generateTokens(user);
-  }
-
-  // Generate a JWT token
-  private async generateTokens(user: {
-    id: number;
-    email: string;
-    role: Role;
-    username: string;
-  }): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      username: user.username,
-    };
-
-    const accessToken = await this.JWT.signAsync(payload, {
-      expiresIn: '30m',
-      secret: this.config.get('JWT_SECRET'),
-    });
-
-    const refreshToken = await this.JWT.signAsync(payload, {
-      expiresIn: '7d',
-      secret: this.config.get('JWT_SECRET'),
-    });
-
-    // Store the refresh token in the user's record in the database
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken },
-    });
-
-    return { accessToken, refreshToken };
-  }
-
-  async refreshAccessToken(refreshToken: string) {
+  async login(user: UserEntity, res: Response, redirect = false) {
     try {
-      // Validate the refresh token
-      const decoded = this.JWT.verify(refreshToken, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET'),
+      const expiresAccessToken = new Date();
+      expiresAccessToken.setSeconds(
+        expiresAccessToken.getTime() +
+          parseInt(this.config.getOrThrow<string>('JWT_EXPIRES_IN')),
+      ); // Set the expiration time for the access token in seconds
+
+      const expiresRefreshToken = new Date();
+      expiresRefreshToken.setSeconds(
+        expiresRefreshToken.getTime() +
+          parseInt(this.config.getOrThrow<string>('JWT_EXPIRES_IN')),
+      ); // Set the expiration time for the refresh token in seconds
+
+      const tokenPayload: { sub: number } = {
+        sub: user.id,
+      };
+
+      const accessToken = this.JWT.sign(tokenPayload, {
+        secret: this.config.getOrThrow<string>('JWT_SECRET'),
+        expiresIn: `${this.config.getOrThrow<string>('JWT_EXPIRES_IN')}s`,
       });
 
-      // Fetch the user based on the decoded token
-      const user = await this.prisma.user.findUnique({
-        where: { id: decoded.sub },
+      const refreshToken = this.JWT.sign(tokenPayload, {
+        secret: this.config.getOrThrow<string>('JWT_SECRET'),
+        expiresIn: `${this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN')}s`,
       });
-      if (!user || user.refreshToken !== refreshToken) {
-        throw new ForbiddenException('Invalid refresh token');
+
+      await this.userService.update(user.email, {
+        refreshToken: await bcrypt.hash(refreshToken, 10),
+      });
+
+      res.cookie('access_token', accessToken, {
+        expires: expiresAccessToken,
+        httpOnly: true,
+        secure: this.config.get('NODE_ENV') === 'production',
+      });
+      res.cookie('Refresh', refreshToken, {
+        httpOnly: true,
+        secure: this.config.get('NODE_ENV') === 'production',
+        expires: expiresRefreshToken,
+      });
+
+      if (redirect) {
+        res.redirect('/');
       }
-
-      // Generate a new access token
-      return (await this.generateTokens(user)).accessToken;
     } catch (error) {
-      throw new ForbiddenException('Invalid or expired refresh token');
+      throw new Error();
     }
   }
 
-  async validateGoogleUser({
-    googleId,
-    email,
-    username,
-  }: {
-    googleId: string;
-    email: string;
-    username: string;
-  }): Promise<UserEntity> {
-    let user = await this.prisma.user.findUnique({ where: { googleId } });
+  async verifyUser(email: string, password: string): Promise<UserEntity> {
+    try {
+      const user = await this.userService.findOne({ email });
 
-    // Hash the Google ID to use as a password
-    const password = await bcrypt.hash(googleId, 10);
-    // If the user doesn't exist, create a new user with the Google ID
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          googleId,
-          email,
-          username,
-          password,
-        },
-      });
+      // Compare the provided password with the hashed password
+      // stored in the database, if they do not match, throw an error
+      if (!(await bcrypt.compare(password, user.password)))
+        throw new UnauthorizedException();
+
+      return new UserEntity(user);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid credentials');
     }
-
-    return new UserEntity(user);
   }
 
-  getGoogleAuthUrl(): string {
-    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
-    const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URIS');
-    const scope =
-      'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-    const responseType = 'code';
-    const accessType = 'offline';
+  async verifyUserRefreshToken(refreshToken: string, id: number) {
+    try {
+      const user = await this.userService.findOne({ id });
+      if (!(await bcrypt.compare(refreshToken, user.refreshToken))) {
+        throw new UnauthorizedException();
+      }
+      return user;
+    } catch (err) {
+      throw new UnauthorizedException('Refresh token is not valid.');
+    }
+  }
 
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=${responseType}&access_type=${accessType}`;
-
-    return googleAuthUrl;
+  async logOut(user: UserEntity): Promise<void> {
+    await this.userService.update(user.email, { refreshToken: null });
   }
 }

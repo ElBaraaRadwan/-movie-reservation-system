@@ -5,15 +5,16 @@ POST http://localhost:3000/auth/signup/customer
 Content-Type: application/json
 
 {
-  "email": "customer@example.com",
+  "email": "customer2@example.com",
   "password": "admin123",
   "username": "customerUser"
 }
 
 ### Sign Up Admin
+# Only for Admin, Require [ADMIN_TOKEN]
 POST http://localhost:3000/auth/signup/admin
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDEzNzUyMywiZXhwIjoxNzM0MTM5MzIzfQ.57Df_fAoQZhOgHtYBwHcCBVMVajlJweKxk44MGTmgR0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEwLCJlbWFpbCI6ImN1c3RvbWVyQGV4YW1wbGUuY29tIiwicm9sZSI6IkNVU1RPTUVSIiwidXNlcm5hbWUiOiJjdXN0b21lclVzZXIiLCJpYXQiOjE3MzQxOTM4MTQsImV4cCI6MTczNDE5NTYxNH0.XzcbnCgDnF8JCZv22CNYs-z710gdomsDdt_v7grYbX0
 
 {
   "email": "admin@example.com",
@@ -26,21 +27,27 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-  "email": "customer@example.com",
+  "email": "customer2@example.com",
   "password": "admin123"
 }
 
+
+### Logout
+POST http://localhost:3000/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjExLCJlbWFpbCI6ImN1c3RvbWVyMkBleGFtcGxlLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsInVzZXJuYW1lIjoiY3VzdG9tZXJVc2VyIiwiaWF0IjoxNzM0MjAyNDAyLCJleHAiOjE3MzQyMDQyMDJ9.olxm8aNz8h-5gSucZwsJQDisdQulM9x5RJU065OkXps
+
+
 ### Get Profile
 GET http://localhost:3000/auth/profile
-Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE4MzUzNCwiZXhwIjoxNzM0MTg1MzM0fQ.YtgnSeJJDiWF2dkfyftzuCpO45D7HfycN7RsD5SHpPI
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjExLCJlbWFpbCI6ImN1c3RvbWVyMkBleGFtcGxlLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsInVzZXJuYW1lIjoiY3VzdG9tZXJVc2VyIiwiaWF0IjoxNzM0MjAyNDAyLCJleHAiOjE3MzQyMDQyMDJ9.olxm8aNz8h-5gSucZwsJQDisdQulM9x5RJU065OkXps
 
 
 # User Controller Requests
 
 ### Get All Users
-# Only for Admin Require [ADMIN_TOKEN]
+# Only for Admin, Require [ADMIN_TOKEN]
 GET http://localhost:3000/user/all
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MjI2MiwiZXhwIjoxNzM0MTQ0MDYyfQ.HGwGoomRwTBIUtQB0szjGJr0z1vsv2i4p8QnNo6q1o4
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE4NTA2MCwiZXhwIjoxNzM0MTg2ODYwfQ.PCdhfrY3I7KZjGlJid-gh4wiYAdDdEWowiElcmYpvuE
 
 ### Get User by ID
 GET http://localhost:3000/user/8
@@ -56,7 +63,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsI
 }
 
 ### Delete User
-# Only for Admin Require [ADMIN_TOKEN]
+# Only for Admin, Require [ADMIN_TOKEN]
 DELETE http://localhost:3000/user/7
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MTI0NSwiZXhwIjoxNzM0MTQzMDQ1fQ.MvCPkvuZOKslz_FqFCe_PTCGln4MXjvH-FqsWUUKDuI
 
@@ -68,3 +75,45 @@ GET http://localhost:3000/auth/google
 
 ### Google Redirect
 GET http://localhost:3000/auth/google/redirect
+
+
+# Movie Controller Requests
+
+### Create Movie
+# Only for Admin, Require [ADMIN_TOKEN]
+POST http://localhost:3000/movie
+Content-Type: application/json
+Authorization: Bearer <ADMIN_TOKEN>
+
+{
+  "title": "Movie Title",
+  "description": "Movie description here",
+  "releaseDate": "2024-12-20",
+  "genre": "Action",
+  "duration": 120
+}
+
+### Stream Movie
+GET http://localhost:3000/movie/stream/:title
+
+### Get All Movies
+GET http://localhost:3000/movie
+
+### Get Movie by Title
+GET http://localhost:3000/movie/:title
+
+### Update Movie
+# Only for Admin, Require [ADMIN_TOKEN]
+PATCH http://localhost:3000/movie/:title
+Content-Type: application/json
+Authorization: Bearer <ADMIN_TOKEN>
+
+{
+  "description": "Updated movie description",
+  "duration": 130
+}
+
+### Delete Movie
+# Only for Admin, Require [ADMIN_TOKEN]
+DELETE http://localhost:3000/movie/:title
+Authorization: Bearer <ADMIN_TOKEN>

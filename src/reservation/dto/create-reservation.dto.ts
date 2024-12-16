@@ -1,4 +1,4 @@
-import { IsInt, Min, IsNotEmpty, IsString } from '@nestjs/class-validator';
+import { IsInt, Min, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateReservationDto {
   @IsString()

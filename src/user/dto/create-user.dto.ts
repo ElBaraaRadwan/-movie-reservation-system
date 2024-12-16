@@ -4,10 +4,10 @@ import {
   IsOptional,
   IsString,
   MinLength,
-} from '@nestjs/class-validator';
+} from 'class-validator';
 import { Role } from '@prisma/client';
 
-export class SignupDto {
+export class CreateUserDto {
   @IsEmail({}, { message: 'Invalid email address' })
   @IsNotEmpty({ message: 'Email cannot be empty' })
   email: string;
@@ -24,4 +24,8 @@ export class SignupDto {
   @IsString()
   @IsNotEmpty({ message: 'Username cannot be empty' })
   username: string;
+
+  @IsString()
+  @IsOptional()
+  refreshToken?: string;
 }
