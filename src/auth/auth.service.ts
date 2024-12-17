@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserEntity } from '../user/entities';
 import { UserService } from 'src/user/user.service';
 import { Response } from 'express';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly JWT: JwtService,
     private readonly config: ConfigService,
     private readonly userService: UserService,
+    private readonly REDIS: RedisService,
   ) {}
 
   async login(user: UserEntity, res: Response, redirect = false) {
@@ -42,9 +44,12 @@ export class AuthService {
         expiresIn: `${this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN')}s`,
       });
 
-      await this.userService.update(user.id, {
-        refreshToken: await bcrypt.hash(refreshToken, 10),
-      });
+      // Store refresh token in Redis
+      await this.REDIS.set(
+        `refresh_token:${user.id}`,
+        refreshToken,
+        this.config.getOrThrow<number>('JWT_REFRESH_EXPIRES_IN'),
+      );
 
       res.cookie('access_token', accessToken, {
         httpOnly: true,
@@ -82,11 +87,12 @@ export class AuthService {
 
   async verifyUserRefreshToken(refreshToken: string, id: number) {
     try {
-      const user = await this.userService.findOne({ id });
-      if (!(await bcrypt.compare(refreshToken, user.refreshToken))) {
-        throw new UnauthorizedException();
+      // Retrieve refresh token from Redis
+      const storedToken = await this.REDIS.get(`refresh_token:${id}`);
+      if (!storedToken || storedToken !== refreshToken) {
+        throw new UnauthorizedException('Invalid refresh token');
       }
-      return user;
+      return await this.userService.findOne({ id });
     } catch (err) {
       throw new UnauthorizedException('Refresh token is not valid.');
     }
@@ -94,8 +100,8 @@ export class AuthService {
 
   async logOut(user: UserEntity, res: Response): Promise<void> {
     try {
-      // Clear refresh token from the database (if stored in user record)
-      await this.userService.update(user.id, { refreshToken: null });
+      // Remove refresh token from Redis
+      await this.REDIS.del(`refresh_token:${user.id}`);
 
       console.log('Clearing cookies...');
 

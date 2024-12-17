@@ -23,9 +23,6 @@ export class UserEntity {
   @Expose()
   updatedAt: Date;
 
-  @Expose()
-  refreshToken?: string;
-
   // Add a constructor to easily create instances of the class
   constructor(partial: Partial<UserEntity>) {
     Object.assign(this, partial);

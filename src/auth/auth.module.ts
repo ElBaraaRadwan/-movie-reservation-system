@@ -11,6 +11,7 @@ import {
 } from './strategies';
 import { PassportModule } from '@nestjs/passport';
 import { UserModule } from 'src/user/user.module';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   controllers: [AuthController],
@@ -33,6 +34,7 @@ import { UserModule } from 'src/user/user.module';
     }),
     ConfigModule,
     UserModule,
+    RedisModule,
   ],
 })
 export class AuthModule {}
