@@ -68,6 +68,7 @@ export class AuthController {
   }
 
   @Get('profile')
+  @UseGuards(JwtGuard)
   getUserInfo(@GetUser() user: UserEntity) {
     console.log(`GetUserInfo: ${user}`);
 

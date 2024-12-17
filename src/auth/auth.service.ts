@@ -16,7 +16,6 @@ import { Response } from 'express';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly JWT: JwtService,
     private readonly config: ConfigService,
     private readonly userService: UserService,
@@ -46,7 +45,7 @@ export class AuthService {
       });
 
       const refreshToken = this.JWT.sign(tokenPayload, {
-        secret: this.config.getOrThrow<string>('JWT_SECRET'),
+        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
         expiresIn: `${this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN')}s`,
       });
 
@@ -55,14 +54,14 @@ export class AuthService {
       });
 
       res.cookie('access_token', accessToken, {
-        expires: expiresAccessToken,
         httpOnly: true,
+        expires: expiresAccessToken,
         secure: this.config.get('NODE_ENV') === 'production',
       });
-      res.cookie('Refresh', refreshToken, {
+      res.cookie('Refresh_token', refreshToken, {
         httpOnly: true,
-        secure: this.config.get('NODE_ENV') === 'production',
         expires: expiresRefreshToken,
+        secure: this.config.get('NODE_ENV') === 'production',
       });
 
       if (redirect) {
