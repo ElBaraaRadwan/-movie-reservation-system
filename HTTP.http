@@ -1,11 +1,11 @@
 # Auth Controller Requests
 
 ### Sign Up Customer
-POST http://localhost:3000/auth/signup/customer
+POST http://localhost:3000/auth/signup
 Content-Type: application/json
 
 {
-  "email": "customer2@example.com",
+  "email": "customer@example.com",
   "password": "admin123",
   "username": "customerUser"
 }
@@ -14,10 +14,10 @@ Content-Type: application/json
 # Only for Admin, Require [ADMIN_TOKEN]
 POST http://localhost:3000/auth/signup/admin
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEwLCJlbWFpbCI6ImN1c3RvbWVyQGV4YW1wbGUuY29tIiwicm9sZSI6IkNVU1RPTUVSIiwidXNlcm5hbWUiOiJjdXN0b21lclVzZXIiLCJpYXQiOjE3MzQxOTM4MTQsImV4cCI6MTczNDE5NTYxNH0.XzcbnCgDnF8JCZv22CNYs-z710gdomsDdt_v7grYbX0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTczNDM5NTU5NywiZXhwIjoxNzM0Mzk5MTk3fQ.fITpE6hLN9EjtdOlM0hw04fmZ2sZ1FJ7zEDvsZrTy9Y
 
 {
-  "email": "admin@example.com",
+  "email": "admin2@example.com",
   "password": "admin123",
   "username": "adminUser"
 }
@@ -27,19 +27,18 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-  "email": "customer2@example.com",
+  "email": "admin2@example.com",
   "password": "admin123"
 }
 
+### Get User Profile (Re    quires JWT Token in Cookie)
+GET http://localhost:3000/auth/profile
+Content-Type: application/json
+Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE3LCJpYXQiOjE3MzQzOTY3OTgsImV4cCI6MTczNDQwMDM5OH0.GuWAV5R4Go2gWdIBJbf0YP-ihDI1qASejo0AXItSgag
 
 ### Logout
 POST http://localhost:3000/auth/logout
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjExLCJlbWFpbCI6ImN1c3RvbWVyMkBleGFtcGxlLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsInVzZXJuYW1lIjoiY3VzdG9tZXJVc2VyIiwiaWF0IjoxNzM0MjAyNDAyLCJleHAiOjE3MzQyMDQyMDJ9.olxm8aNz8h-5gSucZwsJQDisdQulM9x5RJU065OkXps
-
-
-### Get Profile
-GET http://localhost:3000/auth/profile
-Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjExLCJlbWFpbCI6ImN1c3RvbWVyMkBleGFtcGxlLmNvbSIsInJvbGUiOiJDVVNUT01FUiIsInVzZXJuYW1lIjoiY3VzdG9tZXJVc2VyIiwiaWF0IjoxNzM0MjAyNDAyLCJleHAiOjE3MzQyMDQyMDJ9.olxm8aNz8h-5gSucZwsJQDisdQulM9x5RJU065OkXps
+Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE3LCJpYXQiOjE3MzQzOTY3OTgsImV4cCI6MTczNDQwMDM5OH0.GuWAV5R4Go2gWdIBJbf0YP-ihDI1qASejo0AXItSgag
 
 
 # User Controller Requests
@@ -47,16 +46,16 @@ Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjExLCJlbWFpbCI6ImN1
 ### Get All Users
 # Only for Admin, Require [ADMIN_TOKEN]
 GET http://localhost:3000/user/all
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE4NTA2MCwiZXhwIjoxNzM0MTg2ODYwfQ.PCdhfrY3I7KZjGlJid-gh4wiYAdDdEWowiElcmYpvuE
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 
 ### Get User by ID
 GET http://localhost:3000/user/8
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE4NDAyNiwiZXhwIjoxNzM0MTg1ODI2fQ.zDv-ZXbprRUF-aa7J6no7hpn95q0UDcQEf37Q6ikQ4o
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 
 ### Update User
 PATCH http://localhost:3000/user/8
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsIjoiY3VzdG9tZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJ1c2VybmFtZSI6ImN1c3RvbWVyVXNlciIsImlhdCI6MTczNDE4NDAyNiwiZXhwIjoxNzM0MTg1ODI2fQ.zDv-ZXbprRUF-aa7J6no7hpn95q0UDcQEf37Q6ikQ4o
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 
 {
   "username": "UpdatedCustomerName"
@@ -65,8 +64,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjgsImVtYWlsI
 ### Delete User
 # Only for Admin, Require [ADMIN_TOKEN]
 DELETE http://localhost:3000/user/7
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AZXhhbXBsZS5jb20iLCJyb2xlIjoiQURNSU4iLCJ1c2VybmFtZSI6ImFkbWluVXNlciIsImlhdCI6MTczNDE0MTI0NSwiZXhwIjoxNzM0MTQzMDQ1fQ.MvCPkvuZOKslz_FqFCe_PTCGln4MXjvH-FqsWUUKDuI
-
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 
 # Google Controller Requests
 
@@ -76,14 +74,13 @@ GET http://localhost:3000/auth/google
 ### Google Redirect
 GET http://localhost:3000/auth/google/redirect
 
-
 # Movie Controller Requests
 
 ### Create Movie
 # Only for Admin, Require [ADMIN_TOKEN]
 POST http://localhost:3000/movie
 Content-Type: application/json
-Authorization: Bearer <ADMIN_TOKEN>
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 
 {
   "title": "Movie Title",
@@ -94,19 +91,19 @@ Authorization: Bearer <ADMIN_TOKEN>
 }
 
 ### Stream Movie
-GET http://localhost:3000/movie/stream/:title
+GET http://localhost:3000/movie/stream/{title}
 
 ### Get All Movies
 GET http://localhost:3000/movie
 
 ### Get Movie by Title
-GET http://localhost:3000/movie/:title
+GET http://localhost:3000/movie/{title}
 
 ### Update Movie
 # Only for Admin, Require [ADMIN_TOKEN]
-PATCH http://localhost:3000/movie/:title
+PATCH http://localhost:3000/movie/{title}
 Content-Type: application/json
-Authorization: Bearer <ADMIN_TOKEN>
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 
 {
   "description": "Updated movie description",
@@ -115,5 +112,5 @@ Authorization: Bearer <ADMIN_TOKEN>
 
 ### Delete Movie
 # Only for Admin, Require [ADMIN_TOKEN]
-DELETE http://localhost:3000/movie/:title
-Authorization: Bearer <ADMIN_TOKEN>
+DELETE http://localhost:3000/movie/{title}
+Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>

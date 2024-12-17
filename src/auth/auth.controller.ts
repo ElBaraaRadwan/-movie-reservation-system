@@ -62,16 +62,13 @@ export class AuthController {
 
   @UseGuards(JwtGuard)
   @Post('logout')
-  async logOut(@GetUser() user: UserEntity) {
-    await this.authService.logOut(user);
-    return { message: 'Logged out successfully' };
+  async logOut(@GetUser() user: UserEntity, @Res() res: Response) {
+    await this.authService.logOut(user, res);
   }
 
   @Get('profile')
   @UseGuards(JwtGuard)
   getUserInfo(@GetUser() user: UserEntity) {
-    console.log(`GetUserInfo: ${user}`);
-
     return user;
   }
 }

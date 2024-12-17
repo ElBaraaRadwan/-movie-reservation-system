@@ -21,7 +21,10 @@ export class UserService {
     const { email, password } = DTO;
 
     // Check if the user already exists
-    if (await this.findOne({ email })) {
+    const existingUser = await this.prisma.user.findFirst({
+      where: { email },
+    });
+    if (existingUser) {
       throw new ConflictException('Email already in use');
     }
 
@@ -78,14 +81,15 @@ export class UserService {
 
   // Update a user by id
   async update(
-    email: string,
+    user: UserEntity,
     updateUserDto: UpdateUserDto,
   ): Promise<UserEntity> {
+    const { id } = user;
     // Ensure the user exists first
-    await this.findOne({ email }); // Using helper function to find user
+    await this.findOne({ id }); // Using helper function to find user
 
     const updatedUser = await this.prisma.user.update({
-      where: { email },
+      where: { id },
       data: updateUserDto,
     });
 

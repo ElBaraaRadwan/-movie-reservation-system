@@ -12,8 +12,9 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { JwtGuard, RolesGuard } from 'src/auth/guard';
-import { Roles } from 'src/auth/decorator';
+import { GetUser, Roles } from 'src/auth/decorator';
 import { Role } from '@prisma/client';
+import { UserEntity } from './entities';
 
 // @UseGuards(JwtGuard)
 @Controller('user')
@@ -32,8 +33,8 @@ export class UserController {
   }
 
   @Patch(':email')
-  update(@Param('email') email: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(email, updateUserDto);
+  update(@GetUser() user: UserEntity, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(user, updateUserDto);
   }
 
   @UseGuards(RolesGuard)

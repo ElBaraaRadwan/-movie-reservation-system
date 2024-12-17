@@ -1,12 +1,5 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { UserEntity } from '../user/entities';
@@ -49,7 +42,7 @@ export class AuthService {
         expiresIn: `${this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN')}s`,
       });
 
-      await this.userService.update(user.email, {
+      await this.userService.update(user, {
         refreshToken: await bcrypt.hash(refreshToken, 10),
       });
 
@@ -58,7 +51,7 @@ export class AuthService {
         expires: expiresAccessToken,
         secure: this.config.get('NODE_ENV') === 'production',
       });
-      res.cookie('Refresh_token', refreshToken, {
+      res.cookie('refresh_token', refreshToken, {
         httpOnly: true,
         expires: expiresRefreshToken,
         secure: this.config.get('NODE_ENV') === 'production',
@@ -99,7 +92,21 @@ export class AuthService {
     }
   }
 
-  async logOut(user: UserEntity): Promise<void> {
-    await this.userService.update(user.email, { refreshToken: null });
+  async logOut(user: UserEntity, res: Response): Promise<void> {
+    try {
+      // Clear refresh token from the database (if stored in user record)
+      await this.userService.update(user, { refreshToken: null });
+
+      console.log('Clearing cookies...');
+
+      // Clear cookies from the response
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
+
+      res.status(200).send({ message: 'Logged out successfully' });
+      res.redirect('/');
+    } catch (error) {
+      throw new Error('Logout failed');
+    }
   }
 }
