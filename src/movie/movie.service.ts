@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMovieDto, UpdateMovieDto } from './dto';
@@ -11,12 +12,14 @@ import { CloudinaryService } from './cloudinary/cloudinary.service';
 import { Movie } from '@prisma/client';
 import { Request, Response } from 'express';
 import * as path from 'path';
+import { Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class MovieService {
   constructor(
     private readonly prisma: PrismaService,
     private cloudinary: CloudinaryService,
+    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
   ) {}
 
   // Helper function to determine video resolution based on file size
@@ -93,7 +96,7 @@ export class MovieService {
       );
 
       // Create a new movie
-      return await this.prisma.movie.create({
+      const createMovie = await this.prisma.movie.create({
         data: {
           title,
           description,
@@ -104,6 +107,9 @@ export class MovieService {
           resolution,
         },
       });
+
+      await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
+      return createMovie;
     } catch (error) {
       throw new BadRequestException(`Failed to upload files: ${error}`);
     }
@@ -128,11 +134,27 @@ export class MovieService {
 
   // Find all movies
   async findAll() {
-    return await this.prisma.movie.findMany({ include: { showtimes: true } });
+    const cacheKey = 'all_movies';
+    const cachedMovies = await this.cacheManager.get<Movie[]>(cacheKey);
+    if (cachedMovies) {
+      return cachedMovies;
+    }
+
+    const movies = await this.prisma.movie.findMany({
+      include: { showtimes: true },
+    });
+    await this.cacheManager.set(cacheKey, movies, 600); // Cache for 10 minutes
+    return movies;
   }
 
   // Find a movie by Title
   async findOneByName(title: string) {
+    const cacheKey = `movie_${title}`;
+    const cachedMovie = await this.cacheManager.get<Movie>(cacheKey);
+    if (cachedMovie) {
+      return cachedMovie;
+    }
+
     const movie = await this.prisma.movie.findFirst({
       where: { title },
       include: { showtimes: true },
@@ -140,6 +162,8 @@ export class MovieService {
     if (!movie) {
       throw new NotFoundException(`Movie with Title ${title} not found`);
     }
+
+    await this.cacheManager.set(cacheKey, movie, 600); // Cache for 10 minutes
     return movie;
   }
 
@@ -169,7 +193,7 @@ export class MovieService {
       const videoUpload = await this.cloudinary.upload(videoFile);
 
       // Update the movie with the new data
-      return await this.prisma.movie.update({
+      const updateMovie = await this.prisma.movie.update({
         where: { id: movie.id },
         data: {
           ...updateDto,
@@ -178,6 +202,10 @@ export class MovieService {
           resolution: resolution || movie.resolution,
         },
       });
+
+      await this.cacheManager.del(`movie_${title}`); // Invalidate cache for the updated movie
+      await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
+      return updateMovie;
     } catch (error) {
       throw new BadRequestException(`Failed to upload files: ${error}`);
     }
@@ -189,8 +217,12 @@ export class MovieService {
     if (!movie) {
       throw new NotFoundException(`Movie with Title ${title} not found`);
     }
-    return await this.prisma.movie.delete({
+    const delMovie = await this.prisma.movie.delete({
       where: { id: movie.id },
     });
+
+    await this.cacheManager.del(`movie_${title}`); // Invalidate cache for the deleted movie
+    await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
+    return delMovie;
   }
 }
