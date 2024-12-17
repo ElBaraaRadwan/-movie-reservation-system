@@ -7,6 +7,7 @@ import { ReservationModule } from './reservation/reservation.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { CloudinaryService } from './movie/cloudinary/cloudinary.service';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CloudinaryService } from './movie/cloudinary/cloudinary.service';
     ReservationModule,
     PrismaModule,
     ConfigModule.forRoot({ isGlobal: true }),
+    RedisModule,
   ],
   providers: [CloudinaryService],
 })
