@@ -54,7 +54,7 @@ export class UserController {
   @Delete(':id')
   @Roles(Role.ADMIN) // Only admin can delete users
   @UseGuards(JwtGuard, RolesGuard)
-  remove(@Param('id') id: number) {
-    return this.userService.remove(id);
+  remove(@Param('id') id: string) {
+    return this.userService.remove(+id);
   }
 }

@@ -37,7 +37,7 @@ export class ShowtimeService {
     const movie = await this.movieService.findOneByName(title);
 
     if (!movie)
-      throw new NotFoundException(`Movie with title ${title} not found`);
+      throw new NotFoundException(`Movie: ${title} not found`);
 
     const showTimes = await this.prisma.showtime.findFirst({
       where: {

@@ -16,15 +16,16 @@ import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtGuard, RolesGuard } from 'src/auth/guard';
-import { GetUser, Roles } from 'src/auth/decorator';
+import { Roles } from 'src/auth/decorator';
 import { Role } from '@prisma/client';
+import { use } from 'passport';
 
 @UseGuards(JwtGuard)
 @Controller('movie')
 export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
-  @Post()
+  @Post('/create')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @UseInterceptors(FileInterceptor('files'))
@@ -37,15 +38,13 @@ export class MovieController {
   }
 
   @Get('stream/:title')
-  streamMovie(
-    @Param('title') title: string,
-    req: Request,
-    res: Response,
-  ) {
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  streamMovie(@Param('title') title: string, req: Request, res: Response) {
     return this.movieService.streamMovie(title, req, res);
   }
 
-  @Get()
+  @Get('all')
   findAll() {
     return this.movieService.findAll();
   }

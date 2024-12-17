@@ -19,28 +19,18 @@ export class MovieService {
     private cloudinary: CloudinaryService,
   ) {}
 
-  private async uploadFileToCloudinary(
-    file: Express.Multer.File,
-  ): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.cloudinary.storage._handleFile(null, file, (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
-  }
-
   // Helper function to determine video resolution based on file size
-  private determineResolution(fileSize: number): string[] {
+  private determineResolution(fileSize: number, duration: number): string[] {
     // File size in bytes
     const sizeInMB = fileSize / (1024 * 1024); // Convert to MB
 
-    if (sizeInMB > 1000) return ['4K', '1080p', '720p'];
-    if (sizeInMB > 500) return ['1080p', '720p'];
-    if (sizeInMB > 100) return ['720p', '480p'];
+    // Duration in seconds
+    const durationInMinutes = duration / 60; // Convert to minutes
+
+    if (sizeInMB > 1000 || durationInMinutes > 120)
+      return ['4K', '1080p', '720p'];
+    if (sizeInMB > 500 || durationInMinutes > 60) return ['1080p', '720p'];
+    if (sizeInMB > 100 || durationInMinutes > 30) return ['720p', '480p'];
     return ['480p'];
   }
 
@@ -77,20 +67,31 @@ export class MovieService {
     }
 
     try {
+      if (await this.findOneByName(title))
+        throw new BadRequestException(`Movie: ${title} already exists`);
+
       // Validate files
       const { posterFile, videoFile } = this.validateFiles(files);
 
       // Determine resolution based on video file size
-      const resolution = this.determineResolution(videoFile.size);
+      const resolution = this.determineResolution(
+        videoFile.size,
+        videoFile.duration,
+      );
 
       // Upload files to Cloudinary
-      const posterUpload = await this.uploadFileToCloudinary(posterFile);
-      const videoUpload = await this.uploadFileToCloudinary(videoFile);
+      const posterUpload = await this.cloudinary.upload(posterFile);
+      const videoUpload = await this.cloudinary.upload(videoFile);
+      console.log(
+        `title: ${title},
+        description: ${description},
+        genre: ${genre},
+        duration: ${duration},
+        poster: ${posterUpload.secure_url},
+        videoUrl: ${videoUpload.secure_url},
+        resolution: ${resolution}`,
+      );
 
-      if (await this.findOneByName(title))
-        throw new BadRequestException(
-          `Movie with Title ${title} already exists`,
-        );
       // Create a new movie
       return await this.prisma.movie.create({
         data: {
@@ -158,11 +159,14 @@ export class MovieService {
       const { posterFile, videoFile } = this.validateFiles(files);
 
       // Determine resolution based on video file size
-      const resolution = this.determineResolution(videoFile.size);
+      const resolution = this.determineResolution(
+        videoFile.size,
+        videoFile.duration,
+      );
 
       // Upload files to Cloudinary
-      const posterUpload = await this.uploadFileToCloudinary(posterFile);
-      const videoUpload = await this.uploadFileToCloudinary(videoFile);
+      const posterUpload = await this.cloudinary.upload(posterFile);
+      const videoUpload = await this.cloudinary.upload(videoFile);
 
       // Update the movie with the new data
       return await this.prisma.movie.update({

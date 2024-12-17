@@ -1,6 +1,6 @@
 import { Controller, Post, UseGuards, Get, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtGuard, JwtRefreshGuard } from './guard';
+import { GoogleGuard, JwtGuard, JwtRefreshGuard } from './guard';
 import { GetUser } from './decorator';
 import { UserEntity } from 'src/user/entities';
 import { LocalGuard } from './guard/local.guard';
@@ -31,11 +31,11 @@ export class AuthController {
   }
 
   @Get('google')
-  @UseGuards()
+  @UseGuards(GoogleGuard)
   loginGoogle() {}
 
   @Get('google/callback')
-  @UseGuards()
+  @UseGuards(GoogleGuard)
   async googleCallback(
     @GetUser() user: UserEntity,
     @Res({ passthrough: true }) res: Response,

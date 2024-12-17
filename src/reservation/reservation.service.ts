@@ -28,7 +28,12 @@ export class ReservationService {
     });
   }
 
-  async findOne(id: number) {}
+  async findMyReservation(id: number) {
+    return await this.prisma.reservation.findMany({
+      where: { userId: id },
+      include: { showtime: { include: { movie: true } } },
+    });
+  }
 
   async findAll() {
     return await this.prisma.reservation.findMany({

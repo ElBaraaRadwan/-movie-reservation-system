@@ -22,13 +22,13 @@ export class ShowtimeController {
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  @Post()
+  @Post(':title')
   create(@Body() createDto: CreateShowtimeDto, @Param('title') title: string) {
     return this.showtimeService.create(createDto, title);
   }
 
-  @Get()
-  findOne(@Body() title: string) {
+  @Get(':title')
+  findOne(@Param('title') title: string) {
     return this.showtimeService.findOne(title);
   }
 

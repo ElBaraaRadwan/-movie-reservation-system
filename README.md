@@ -83,3 +83,6 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+Postman Fork for Project HTTP Requests
+[Movie Reservation System on Postman](https://web.postman.co/workspace/94b8cafe-91d1-4800-84a1-6fa74bdae113/collection/17954957-83c9dc03-26d5-457c-8641-fa2871e7df85?action=share&source=copy-link&creator=17954957)

@@ -29,8 +29,16 @@ export class CloudinaryService {
     });
   }
 
-  async upload(file: any) {
-    // Implement the upload logic here if needed
+  async upload(file: Express.Multer.File): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.storage._handleFile(null, file, (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      });
+    });
   }
 
   // Stream a movie by file path
