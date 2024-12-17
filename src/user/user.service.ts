@@ -51,24 +51,27 @@ export class UserService {
           if (isNaN(parsedQuery[key])) {
             throw new Error(`Invalid value for ${key}: ${value}`);
           }
-        } else if (key === 'role') {
-          // Convert role to uppercase
-          parsedQuery[key] = value.toUpperCase();
         } else {
           parsedQuery[key] = value;
         }
       }
-
       // Dynamically query the database using Prisma
       const user = await this.prisma.user.findFirst({
         where: parsedQuery,
       });
 
+      if (!user) {
+        const queryParams = Object.entries(query)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ');
+        throw new NotFoundException(`${queryParams}`);
+      }
+
       return new UserEntity(user);
     } catch (error) {
       console.error('Error in findUser:', (error as Error).message);
       throw new NotFoundException(
-        'Failed to find user: ' + (error as Error).message,
+        'Failed to find user with: ' + (error as Error).message,
       );
     }
   }
@@ -80,13 +83,23 @@ export class UserService {
   }
 
   // Update a user by id
-  async update(
-    user: UserEntity,
-    updateUserDto: UpdateUserDto,
-  ): Promise<UserEntity> {
-    const { id } = user;
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<UserEntity> {
     // Ensure the user exists first
     await this.findOne({ id }); // Using helper function to find user
+
+    // Check if the new email already exists
+    if (updateUserDto.email) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: updateUserDto.email },
+      });
+      if (existingUser && existingUser.id !== id) {
+        throw new ConflictException('Email already in use');
+      }
+    }
+
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
 
     const updatedUser = await this.prisma.user.update({
       where: { id },

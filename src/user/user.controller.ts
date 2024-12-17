@@ -6,8 +6,8 @@ import {
   Param,
   Delete,
   UseGuards,
-  Post,
   Query,
+  Post,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -20,26 +20,40 @@ import { UserEntity } from './entities';
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  @Post('signup')
+  signUp(@Body() DTO: CreateUserDto) {
+    return this.userService.create(DTO);
+  }
+
+  @Post('signup/admin')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  signUpAdmin(@Body() DTO: CreateUserDto) {
+    return this.userService.create(DTO, Role.ADMIN);
+  }
+
   @Get('find')
   findOne(@Query() query: Record<string, any>) {
     return this.userService.findOne(query);
   }
 
   @Get('all')
-  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN) // Only admin can view all users
+  @UseGuards(JwtGuard, RolesGuard)
   findAll() {
     return this.userService.findAll();
   }
 
-  @Patch(':email')
-  update(@GetUser() user: UserEntity, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(user, updateUserDto);
+  @Patch(':id')
+  @UseGuards(JwtGuard)
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(+id, updateUserDto);
   }
 
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN) // Only admin can delete users
   @Delete(':id')
+  @Roles(Role.ADMIN) // Only admin can delete users
+  @UseGuards(JwtGuard, RolesGuard)
   remove(@Param('id') id: number) {
     return this.userService.remove(id);
   }

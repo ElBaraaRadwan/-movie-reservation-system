@@ -27,14 +27,14 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin2@example.com",
+  "email": "admin@example.com",
   "password": "admin123"
 }
 
-### Get User Profile (Re    quires JWT Token in Cookie)
+### Get User Profile (Requires JWT Token in Cookie)
 GET http://localhost:3000/auth/profile
 Content-Type: application/json
-Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE3LCJpYXQiOjE3MzQzOTY3OTgsImV4cCI6MTczNDQwMDM5OH0.GuWAV5R4Go2gWdIBJbf0YP-ihDI1qASejo0AXItSgag
+Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTczNDM5OTYxNSwiZXhwIjoxNzM0NDAzMjE1fQ.GGRocs29XhY7m4FO6pRtXjCPCf12VVrNist2iZaQLYc
 
 ### Logout
 POST http://localhost:3000/auth/logout
@@ -46,14 +46,14 @@ Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjE3LCJpYXQiOj
 ### Get All Users
 # Only for Admin, Require [ADMIN_TOKEN]
 GET http://localhost:3000/user/all
-Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTczNDM5OTYxNSwiZXhwIjoxNzM0NDAzMjE1fQ.GGRocs29XhY7m4FO6pRtXjCPCf12VVrNist2iZaQLYc
 
 ### Get User by ID
-GET http://localhost:3000/user/8
-Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
+GET http://localhost:3000/user/find?id=1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTczNDM5OTYxNSwiZXhwIjoxNzM0NDAzMjE1fQ.GGRocs29XhY7m4FO6pRtXjCPCf12VVrNist2iZaQLYc
 
 ### Update User
-PATCH http://localhost:3000/user/8
+PATCH http://localhost:3000/user/
 Content-Type: application/json
 Authorization: Bearer <PASTE_YOUR_ACCESS_TOKEN_HERE>
 

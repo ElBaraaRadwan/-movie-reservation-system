@@ -42,7 +42,7 @@ export class AuthService {
         expiresIn: `${this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN')}s`,
       });
 
-      await this.userService.update(user, {
+      await this.userService.update(user.id, {
         refreshToken: await bcrypt.hash(refreshToken, 10),
       });
 
@@ -95,7 +95,7 @@ export class AuthService {
   async logOut(user: UserEntity, res: Response): Promise<void> {
     try {
       // Clear refresh token from the database (if stored in user record)
-      await this.userService.update(user, { refreshToken: null });
+      await this.userService.update(user.id, { refreshToken: null });
 
       console.log('Clearing cookies...');
 

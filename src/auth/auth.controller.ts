@@ -1,33 +1,16 @@
-import { Controller, Post, Body, UseGuards, Get, Res } from '@nestjs/common';
+import { Controller, Post, UseGuards, Get, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtGuard, JwtRefreshGuard, RolesGuard } from './guard';
-import { Roles } from './decorator';
-import { Role } from '@prisma/client';
+import { JwtGuard, JwtRefreshGuard } from './guard';
 import { GetUser } from './decorator';
 import { UserEntity } from 'src/user/entities';
 import { LocalGuard } from './guard/local.guard';
 import { Response } from 'express';
-import { CreateUserDto } from 'src/user/dto';
-import { UserService } from 'src/user/user.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private userService: UserService,
   ) {}
-
-  @Post('signup')
-  signUp(@Body() DTO: CreateUserDto) {
-    return this.userService.create(DTO);
-  }
-
-  @Post('signup/admin')
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  signUpAdmin(@Body() DTO: CreateUserDto) {
-    return this.userService.create(DTO, Role.ADMIN);
-  }
 
   @Post('login')
   @UseGuards(LocalGuard)
