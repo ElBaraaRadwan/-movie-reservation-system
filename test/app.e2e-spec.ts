@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { AppModule } from '../src/app.module';
+import * as pactum from 'pactum';
 
 describe('APP E2E', () => {
   let app: INestApplication;
@@ -19,10 +20,12 @@ describe('APP E2E', () => {
       }),
     );
     await app.init();
-    await app.listen(3330);
+    await app.listen(3001);
 
     prisma = app.get(PrismaService);
     await prisma.cleanDB();
+    await prisma.seedDB();
+    pactum.request.setBaseUrl('http://localhost:3001');
   });
 
   afterAll(async () => {

@@ -47,4 +47,33 @@ export class PrismaService
       this.user.deleteMany(),
     ]);
   }
+
+  async seedDB() {
+    await this.user.createMany({
+      data: [
+        {
+          email: 'admin@example.com',
+          password: 'admin123',
+          username: 'adminUser',
+          role: 'ADMIN',
+        },
+        {
+          email: 'customer@example.com',
+          password: 'customer123',
+          username: 'customerUser',
+          role: 'CUSTOMER',
+        },
+      ],
+    });
+    await this.movie.create({
+      data: {
+        title: 'Inception',
+        description: 'Sci-Fi Movie',
+        genre: 'action',
+        poster: 'Non',
+        videoUrl: 'Non',
+        duration: 120,
+      },
+    });
+  }
 }
