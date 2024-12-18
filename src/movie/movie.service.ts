@@ -44,14 +44,14 @@ export class MovieService {
     const allowedImageTypes = ['image/jpeg', 'image/png'];
     const allowedVideoTypes = ['video/mp4', 'video/mkv'];
 
-    const posterFile = files.poster[0];
-    const videoFile = files.video[0];
+    const posterFile = files.poster?.[0];
+    const videoFile = files.video?.[0];
 
-    if (!allowedImageTypes.includes(posterFile.mimetype)) {
+    if (posterFile && !allowedImageTypes.includes(posterFile.mimetype)) {
       throw new BadRequestException('Invalid poster file type');
     }
 
-    if (!allowedVideoTypes.includes(videoFile.mimetype)) {
+    if (videoFile && !allowedVideoTypes.includes(videoFile.mimetype)) {
       throw new BadRequestException('Invalid video file type');
     }
 
@@ -85,15 +85,6 @@ export class MovieService {
       // Upload files to Cloudinary
       const posterUpload = await this.cloudinary.upload(posterFile);
       const videoUpload = await this.cloudinary.upload(videoFile);
-      console.log(
-        `title: ${title},
-        description: ${description},
-        genre: ${genre},
-        duration: ${duration},
-        poster: ${posterUpload.secure_url},
-        videoUrl: ${videoUpload.secure_url},
-        resolution: ${resolution}`,
-      );
 
       // Create a new movie
       const createMovie = await this.prisma.movie.create({
@@ -179,27 +170,36 @@ export class MovieService {
     }
 
     try {
-      // Validate files
-      const { posterFile, videoFile } = this.validateFiles(files);
+      let updatedPosterUrl = movie.poster;
+      let updatedVideoUrl = movie.videoUrl;
+      let updatedResolution = movie.resolution;
 
-      // Determine resolution based on video file size
-      const resolution = this.determineResolution(
-        videoFile.size,
-        videoFile.duration,
-      );
+      // Validate and upload new poster
+      if (files.poster) {
+        const { posterFile } = this.validateFiles(files);
+        const posterUpload = await this.cloudinary.upload(posterFile);
+        updatedPosterUrl = posterUpload.secure_url; // New poster URL
+      }
 
-      // Upload files to Cloudinary
-      const posterUpload = await this.cloudinary.upload(posterFile);
-      const videoUpload = await this.cloudinary.upload(videoFile);
+      // Validate and upload new video
+      if (files.video) {
+        const { videoFile } = this.validateFiles(files);
+        const videoUpload = await this.cloudinary.upload(videoFile);
+        updatedVideoUrl = videoUpload.secure_url; // New video URL
+        updatedResolution = this.determineResolution(
+          videoFile.size,
+          videoFile.duration,
+        );
+      }
 
       // Update the movie with the new data
       const updateMovie = await this.prisma.movie.update({
         where: { id: movie.id },
         data: {
           ...updateDto,
-          poster: posterUpload ? posterUpload.secure_url : movie.poster,
-          videoUrl: videoUpload ? videoUpload.secure_url : movie.videoUrl,
-          resolution: resolution || movie.resolution,
+          poster: updatedPosterUrl,
+          videoUrl: updatedVideoUrl,
+          resolution: updatedResolution,
         },
       });
 

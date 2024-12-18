@@ -16,29 +16,22 @@ export class CloudinaryService {
       api_key: this.config.get('CLOUDINARY_API_KEY'),
       api_secret: this.config.get('CLOUDINARY_API_SECRET'),
     });
-
-    this.storage = new CloudinaryStorage({
-      cloudinary: cloudinary,
-      params: async (req, file) => {
-        return {
-          folder: 'movies', // The folder in Cloudinary where uploads will be stored
-          format: file.mimetype.split('/')[1], // Allowed file formats
-          public_id: file.originalname.split('.')[0], // File name without extension
-        };
-      },
-    });
   }
 
   async upload(file: Express.Multer.File): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.storage._handleFile(null, file, (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
+    try {
+      const uploadResult = await cloudinary.uploader.upload(file.path, {
+        folder: 'movies', // Folder name on Cloudinary
+        resource_type: 'auto', // Automatically detect the file type
+        public_id: path.parse(file.originalname).name, // Use file name without extension
       });
-    });
+
+      // Delete the local file after successful upload
+      fs.unlinkSync(file.path);
+      return uploadResult;
+    } catch (error) {
+      throw new Error(`Cloudinary upload failed: ${error}`);
+    }
   }
 
   // Stream a movie by file path
