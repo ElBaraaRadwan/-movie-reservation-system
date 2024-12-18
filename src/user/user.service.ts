@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -9,10 +10,14 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 import { UserEntity } from './entities/user.entity';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
+  ) {}
 
   async create(
     DTO: CreateUserDto,
@@ -37,6 +42,10 @@ export class UserService {
       },
     });
 
+    // Invalidate cache
+    await this.cacheManager.del(`user:${user.id}`);
+    await this.cacheManager.del('users:all');
+
     return new UserEntity(user);
   }
 
@@ -55,7 +64,16 @@ export class UserService {
           parsedQuery[key] = value;
         }
       }
-      // Dynamically query the database using Prisma
+      // Generate a cache key based on the parsed query
+      const cacheKey = `user:${JSON.stringify(parsedQuery)}`;
+
+      // Check Redis for cached user
+      const cachedUser = await this.cacheManager.get<UserEntity>(cacheKey);
+      if (cachedUser) {
+        return cachedUser;
+      }
+
+      // Query the database for the user
       const user = await this.prisma.user.findFirst({
         where: parsedQuery,
       });
@@ -64,10 +82,15 @@ export class UserService {
         const queryParams = Object.entries(query)
           .map(([key, value]) => `${key}: ${value}`)
           .join(', ');
-        throw new NotFoundException(`${queryParams}`);
+        throw new NotFoundException(`User not found with: ${queryParams}`);
       }
 
-      return new UserEntity(user);
+      // Convert to UserEntity and cache the result
+      const userEntity = new UserEntity(user);
+
+      await this.cacheManager.set(cacheKey, userEntity, 300);
+
+      return userEntity;
     } catch (error) {
       console.error('Error in findUser:', (error as Error).message);
       throw new NotFoundException(
@@ -78,8 +101,20 @@ export class UserService {
 
   // Get all users
   async findAll(): Promise<UserEntity[]> {
+    const cacheKey = 'users:all';
+    const cachedUsers = await this.cacheManager.get<UserEntity[]>(cacheKey);
+
+    if (cachedUsers) {
+      return cachedUsers;
+    }
+
     const users = await this.prisma.user.findMany();
-    return users.map((user) => new UserEntity(user));
+    const userEntities = users.map((user) => new UserEntity(user));
+
+    // Cache the result
+    await this.cacheManager.set(cacheKey, userEntities, 300);
+
+    return userEntities;
   }
 
   // Update a user by id
@@ -105,6 +140,9 @@ export class UserService {
       where: { id },
       data: updateUserDto,
     });
+    // Invalidate cache
+    await this.cacheManager.del(`user:${id}`);
+    await this.cacheManager.del('users:all');
 
     return new UserEntity(updatedUser);
   }
@@ -115,7 +153,13 @@ export class UserService {
       // Ensure the user exists first
       await this.findOne({ id });
 
-      return await this.prisma.user.delete({ where: { id } });
+      const deletedUser = await this.prisma.user.delete({ where: { id } });
+
+      // Invalidate cache
+      await this.cacheManager.del(`user:${id}`);
+      await this.cacheManager.del('users:all');
+
+      return new UserEntity(deletedUser);
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
