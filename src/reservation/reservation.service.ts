@@ -4,6 +4,7 @@ import { UpdateReservationDto } from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ShowtimeService } from 'src/showtime/showtime.service';
 import { Cache } from '@nestjs/cache-manager';
+import { Showtime } from '@prisma/client';
 
 @Injectable()
 export class ReservationService {
@@ -15,7 +16,7 @@ export class ReservationService {
   async create(createDto: CreateReservationDto, userId: number) {
     const { movieTitle, seatsReserved } = createDto;
 
-    const showtime = await this.movieShowtime.findOne(movieTitle);
+    const showtime: Showtime = await this.movieShowtime.findOne(movieTitle);
 
     if (showtime.capacity < seatsReserved) {
       throw new Error('Not enough seats available');
@@ -82,7 +83,7 @@ export class ReservationService {
     updateDto: UpdateReservationDto,
     userId: number,
   ) {
-    const showtime = await this.movieShowtime.findOne(movieTitle);
+    const showtime: Showtime = await this.movieShowtime.findOne(movieTitle);
 
     const reservation = await this.prisma.reservation.findFirst({
       where: { showtimeId: showtime.id },
