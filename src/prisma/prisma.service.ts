@@ -1,12 +1,10 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleDestroy, OnModuleInit
-{
+export class PrismaService extends PrismaClient {
   constructor(config: ConfigService) {
     super({
       datasources: {
@@ -15,25 +13,6 @@ export class PrismaService
         },
       },
     });
-  }
-
-  async onModuleInit() {
-    try {
-      await this.$connect();
-      console.log('Database connection established');
-    } catch (error) {
-      console.error('Database connection error:', error);
-      throw error;
-    }
-  }
-
-  async onModuleDestroy() {
-    try {
-      await this.$disconnect();
-      console.log('Database connection closed');
-    } catch (error) {
-      console.error('Error disconnecting from database:', error);
-    }
   }
 
   cleanDB() {
@@ -53,13 +32,13 @@ export class PrismaService
       data: [
         {
           email: 'admin@example.com',
-          password: 'admin123',
+          password: await bcrypt.hash('admin123', 10),
           username: 'adminUser',
           role: 'ADMIN',
         },
         {
           email: 'customer@example.com',
-          password: 'customer123',
+          password: await bcrypt.hash('customer123', 10),
           username: 'customerUser',
           role: 'CUSTOMER',
         },

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
@@ -106,8 +110,8 @@ export class AuthService {
       console.log('Clearing cookies...');
 
       // Clear cookies from the response
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/' });
 
       res.status(200).send({ message: 'Logged out successfully' });
       res.redirect('/');

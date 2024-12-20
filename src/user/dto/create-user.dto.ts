@@ -24,8 +24,4 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty({ message: 'Username cannot be empty' })
   username: string;
-
-  @IsString()
-  @IsOptional()
-  refreshToken?: string;
 }

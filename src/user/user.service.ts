@@ -64,12 +64,14 @@ export class UserService {
           parsedQuery[key] = value;
         }
       }
+
       // Generate a cache key based on the parsed query
       const cacheKey = `user:${JSON.stringify(parsedQuery)}`;
 
       // Check Redis for cached user
       const cachedUser = await this.cacheManager.get<UserEntity>(cacheKey);
       if (cachedUser) {
+        console.log(`CacheUser: ${cachedUser}`);
         return cachedUser;
       }
 
@@ -85,17 +87,12 @@ export class UserService {
         throw new NotFoundException(`User not found with: ${queryParams}`);
       }
 
-      // Convert to UserEntity and cache the result
-      const userEntity = new UserEntity(user);
+      await this.cacheManager.set(cacheKey, user, 300);
 
-      await this.cacheManager.set(cacheKey, userEntity, 300);
-
-      return userEntity;
+      return new UserEntity(user);
     } catch (error) {
-      console.error('Error in findUser:', (error as Error).message);
-      throw new NotFoundException(
-        'Failed to find user with: ' + (error as Error).message,
-      );
+      console.error('Error in findUser:', error);
+      throw new NotFoundException('Failed to find user with: ' + error);
     }
   }
 

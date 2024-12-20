@@ -26,8 +26,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     email: string;
     role: Role;
   }) {
-    const id = payload.sub;
-    const user = await this.userService.findOne({ id });
+    console.log('Payload:', payload);
+    const user = await this.userService.findOne({ id: payload.sub });
+    console.log('Validated User:', user);
 
     if (!user) {
       throw new UnauthorizedException('Invalid token: user not found');
