@@ -8,8 +8,8 @@ import { CreateUserDto } from '../src/user/dto';
 describe('APP E2E', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let adminJwtCookie: string;
-  let customerJwtCookie: string;
+  let admin_access_token: string;
+  let customer_access_token: string;
   let customerDTO: CreateUserDto;
   let adminDTO: CreateUserDto;
   let adminLoginDTO = { email: 'admin@example.com', password: 'admin123' };
@@ -33,7 +33,7 @@ describe('APP E2E', () => {
     await app.listen(3001);
 
     prisma = app.get(PrismaService);
-    await prisma.cleanDB();
+    await prisma.cleanDB(); // Clean the database
     await prisma.seedDB(); // Seed the database
     pactum.request.setBaseUrl('http://localhost:3001');
 
@@ -61,8 +61,15 @@ describe('APP E2E', () => {
       .withJson(customerLoginDTO)
       .expectStatus(HttpStatus.CREATED);
 
-    customerJwtCookie = customerRes.headers['set-cookie'];
-    adminJwtCookie = adminRes.headers['set-cookie'];
+    customer_access_token = customerRes.headers['set-cookie']
+      .find((cookie) => cookie.startsWith('access_token'))
+      .split(';')[0];
+    admin_access_token = adminRes.headers['set-cookie']
+      .find((cookie) => cookie.startsWith('access_token'))
+      .split(';')[0];
+
+    console.log('admin Cookie:', adminRes.headers['set-cookie']);
+    console.log('customer Cookie:', customerRes.headers['set-cookie']);
   });
 
   afterAll(async () => {
@@ -84,7 +91,7 @@ describe('APP E2E', () => {
       //       .spec()
       //       .post('/user/signup/admin')
       //       .withJson(adminDTO)
-      //       .withCookies(adminJwtCookie)
+      //       .withCookies(admin_access_token)
       //       .expectStatus(HttpStatus.CREATED);
       //   });
 
@@ -93,7 +100,7 @@ describe('APP E2E', () => {
       //       .spec()
       //       .post('/user/signup/admin')
       //       .withJson(adminDTO)
-      //       .withCookies(adminJwtCookie)
+      //       .withCookies(admin_access_token)
       //       .expectStatus(HttpStatus.CONFLICT);
       //   });
 
@@ -102,7 +109,7 @@ describe('APP E2E', () => {
           .spec()
           .post('/user/signup/admin')
           .withJson(customerDTO)
-          .withCookies(customerJwtCookie)
+          .withCookies(customer_access_token)
           .expectStatus(HttpStatus.UNAUTHORIZED);
       });
     });
@@ -111,7 +118,7 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .post('/auth/logout')
-          .withHeaders({ Cookie: customerJwtCookie[0] })
+          .withCookies(customer_access_token)
           .expectStatus(HttpStatus.OK);
       });
 
@@ -119,7 +126,7 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .post('/auth/logout')
-          .withCookies(adminJwtCookie[0])
+          .withCookies(admin_access_token)
           .expectStatus(HttpStatus.OK);
       });
     });
@@ -167,14 +174,14 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/auth/profile')
-          .withCookies(customerJwtCookie[0])
+          .withCookies(customer_access_token)
           .expectStatus(HttpStatus.OK);
       });
       it('should return admin profile', async () => {
         await pactum
           .spec()
           .get('/auth/profile')
-          .withCookies(adminJwtCookie[0])
+          .withCookies(admin_access_token)
           .expectStatus(HttpStatus.OK);
       });
     });
@@ -186,7 +193,7 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/user/all')
-          .withCookies(adminJwtCookie[0])
+          .withCookies(admin_access_token)
           .expectStatus(HttpStatus.OK);
       });
 
@@ -194,7 +201,7 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/user/all')
-          .withCookies(customerJwtCookie)
+          .withCookies(customer_access_token)
           .expectStatus(HttpStatus.UNAUTHORIZED);
       });
     });
@@ -221,7 +228,7 @@ describe('APP E2E', () => {
       //       .spec()
       //       .patch('/user/189')
       //       .withJson({ username: 'newAdminUser' })
-      //       .withCookies(adminJwtCookie[0])
+      //       .withCookies(admin_access_token[0])
       //       .expectStatus(HttpStatus.OK);
       //   });
     });
