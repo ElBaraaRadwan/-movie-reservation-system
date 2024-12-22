@@ -140,7 +140,7 @@ export class MovieService {
 
   // Find a movie by Title
   async findOneByName(title: string) {
-    const cacheKey = `movie_${title}`;
+    const cacheKey = `movie:${title}`;
     const cachedMovie = await this.cacheManager.get<Movie>(cacheKey);
     if (cachedMovie) {
       return cachedMovie;
@@ -203,7 +203,7 @@ export class MovieService {
         },
       });
 
-      await this.cacheManager.del(`movie_${title}`); // Invalidate cache for the updated movie
+      await this.cacheManager.del(`movie:${title}`); // Invalidate cache for the updated movie
       await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
       return updateMovie;
     } catch (error) {
@@ -221,7 +221,7 @@ export class MovieService {
       where: { id: movie.id },
     });
 
-    await this.cacheManager.del(`movie_${title}`); // Invalidate cache for the deleted movie
+    await this.cacheManager.del(`movie:${title}`); // Invalidate cache for the deleted movie
     await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
     return delMovie;
   }

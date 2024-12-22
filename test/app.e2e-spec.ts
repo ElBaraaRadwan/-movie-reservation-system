@@ -10,6 +10,8 @@ describe('APP E2E', () => {
   let prisma: PrismaService;
   let admin_access_token: string;
   let customer_access_token: string;
+  let admin_refresh_token: string;
+  let customer_refresh_token: string;
   let customerDTO: CreateUserDto;
   let adminDTO: CreateUserDto;
   let adminLoginDTO = { email: 'admin@example.com', password: 'admin123' };
@@ -30,7 +32,7 @@ describe('APP E2E', () => {
       }),
     );
     await app.init();
-    await app.listen(3001);
+    await app.listen(3002);
 
     prisma = app.get(PrismaService);
     await prisma.cleanDB(); // Clean the database
@@ -67,6 +69,12 @@ describe('APP E2E', () => {
     admin_access_token = adminRes.headers['set-cookie']
       .find((cookie) => cookie.startsWith('access_token'))
       .split(';')[0];
+    customer_refresh_token = customerRes.headers['set-cookie']
+      .find((cookie) => cookie.startsWith('refresh_token'))
+      .split(';')[0];
+    admin_refresh_token = adminRes.headers['set-cookie']
+      .find((cookie) => cookie.startsWith('refresh_token'))
+      .split(';')[0];
 
     console.log('admin Cookie:', adminRes.headers['set-cookie']);
     console.log('customer Cookie:', customerRes.headers['set-cookie']);
@@ -86,31 +94,31 @@ describe('APP E2E', () => {
           .expectStatus(HttpStatus.CREATED);
       });
 
-      //   it('should create a new admin user as an admin', async () => {
-      //     await pactum
-      //       .spec()
-      //       .post('/user/signup/admin')
-      //       .withJson(adminDTO)
-      //       .withCookies(admin_access_token)
-      //       .expectStatus(HttpStatus.CREATED);
-      //   });
+      it('should create a new admin user as an admin', async () => {
+        await pactum
+          .spec()
+          .post('/user/signup/admin')
+          .withJson(adminDTO)
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.CREATED);
+      });
 
-      //   it('should not create an existed admin user', async () => {
-      //     await pactum
-      //       .spec()
-      //       .post('/user/signup/admin')
-      //       .withJson(adminDTO)
-      //       .withCookies(admin_access_token)
-      //       .expectStatus(HttpStatus.CONFLICT);
-      //   });
+      it('should not create an existed admin user', async () => {
+        await pactum
+          .spec()
+          .post('/user/signup/admin')
+          .withJson(adminDTO)
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.CONFLICT);
+      });
 
-      it('should return unAuth for non admin user', async () => {
+      it('should return FORBIDDEN for non admin user', async () => {
         await pactum
           .spec()
           .post('/user/signup/admin')
           .withJson(customerDTO)
           .withCookies(customer_access_token)
-          .expectStatus(HttpStatus.UNAUTHORIZED);
+          .expectStatus(HttpStatus.FORBIDDEN);
       });
     });
     describe('Logout', () => {
@@ -156,6 +164,25 @@ describe('APP E2E', () => {
           .expectStatus(HttpStatus.UNAUTHORIZED);
       });
     });
+
+    describe('Refresh Token', () => {
+      it('should refresh token as a customer', async () => {
+        await pactum
+          .spec()
+          .post('/auth/refresh')
+          .withCookies(customer_refresh_token)
+          .expectStatus(HttpStatus.CREATED);
+      });
+
+      it('should refresh token as an admin', async () => {
+        await pactum
+          .spec()
+          .post('/auth/refresh')
+          .withCookies(admin_refresh_token)
+          .expectStatus(HttpStatus.CREATED);
+      });
+    });
+
     describe('Google Login', () => {
       it('should login with google', async () => {
         await pactum.spec().get('/auth/google').expectStatus(HttpStatus.FOUND);
@@ -197,12 +224,12 @@ describe('APP E2E', () => {
           .expectStatus(HttpStatus.OK);
       });
 
-      it('should return unAuth for non admin user', async () => {
+      it('should return FORBIDDEN for non admin user', async () => {
         await pactum
           .spec()
           .get('/user/all')
           .withCookies(customer_access_token)
-          .expectStatus(HttpStatus.UNAUTHORIZED);
+          .expectStatus(HttpStatus.FORBIDDEN);
       });
     });
     describe('Find User', () => {
@@ -221,28 +248,103 @@ describe('APP E2E', () => {
           .withQueryParams({ username: 'adminUser' })
           .expectStatus(HttpStatus.OK);
       });
+
+      it('should return NOT FOUND for invalid user', async () => {
+        await pactum
+          .spec()
+          .get('/user/find')
+          .withQueryParams({ email: 'lol@example.com' })
+          .expectStatus(HttpStatus.NOT_FOUND);
+      });
     });
+
     describe('Update User', () => {
-      //   it('should update a user', async () => {
-      //     await pactum
-      //       .spec()
-      //       .patch('/user/189')
-      //       .withJson({ username: 'newAdminUser' })
-      //       .withCookies(admin_access_token[0])
-      //       .expectStatus(HttpStatus.OK);
-      //   });
+      it('should update a admin', async () => {
+        await pactum
+          .spec()
+          .patch('/user/1')
+          .withJson({ username: 'newAdminUser' })
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should update a customer', async () => {
+        await pactum
+          .spec()
+          .patch('/user/2')
+          .withJson({ username: 'newCustomerUser' })
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return NOT FOUND for invalid user', async () => {
+        await pactum
+          .spec()
+          .patch('/user/30')
+          .withJson({ username: 'newCustomerUser' })
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.NOT_FOUND);
+      });
     });
-    describe('Delete User', () => {});
+
+    describe('Delete User', () => {
+      it('should delete a user', async () => {
+        await pactum
+          .spec()
+          .delete('/user/2')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return NOT FOUND for invalid user', async () => {
+        await pactum
+          .spec()
+          .delete('/user/30')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.NOT_FOUND);
+      });
+    });
   });
 
-  //   describe('Movies', () => {
-  //     describe('Get all movies', () => {});
-  //     describe('Get movie by title', () => {});
-  //     describe('Movie Stream', () => {});
-  //     describe('Create movie', () => {});
-  //     describe('Update movie', () => {});
-  //     describe('Delete movie', () => {});
-  //   });
+  describe('Movies', () => {
+    describe('Get all movies', () => {
+      it('should return all movies to login users', async () => {
+        await pactum
+          .spec()
+          .get('/movie/all')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should not return movies to non login users', async () => {
+        await pactum
+          .spec()
+          .get('/movie/all')
+          .expectStatus(HttpStatus.UNAUTHORIZED);
+      });
+    });
+    describe('Get movie by title', () => {
+      it('should return a movie by title', async () => {
+        await pactum
+          .spec()
+          .get('/movie/Inception')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return NOT FOUND for invalid movie', async () => {
+        await pactum
+          .spec()
+          .get('/movie/FakeName')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.NOT_FOUND);
+      });
+    });
+    describe('Movie Stream', () => {});
+    describe('Create movie', () => {});
+    describe('Update movie', () => {});
+    describe('Delete movie', () => {});
+  });
 
   //   describe('Showtimes', () => {
   //     describe('Get all showtimes', () => {});

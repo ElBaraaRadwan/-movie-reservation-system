@@ -71,7 +71,6 @@ export class UserService {
       // Check Redis for cached user
       const cachedUser = await this.cacheManager.get<UserEntity>(cacheKey);
       if (cachedUser) {
-        console.log(`CacheUser: ${cachedUser}`);
         return cachedUser;
       }
 

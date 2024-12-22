@@ -93,6 +93,8 @@ export class AuthService {
     try {
       // Retrieve refresh token from Redis
       const storedToken = await this.REDIS.get(`refresh_token:${id}`);
+      console.log('Stored token:', storedToken);
+
       if (!storedToken || storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
