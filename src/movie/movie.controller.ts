@@ -9,16 +9,15 @@ import {
   UseInterceptors,
   UploadedFiles,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtGuard, RolesGuard } from 'src/auth/guard';
 import { Roles } from 'src/auth/decorator';
 import { Role } from '@prisma/client';
-import { use } from 'passport';
 
 @UseGuards(JwtGuard)
 @Controller('movie')
@@ -28,20 +27,25 @@ export class MovieController {
   @Post('/create')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  @UseInterceptors(FileInterceptor('files'))
-  create(
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'poster', maxCount: 1 }, // Expecting 1 file for 'poster'
+      { name: 'videoUrl', maxCount: 1 }, // Expecting 1 file for 'videoUrl'
+    ]),
+  )
+  async create(
     @Body() dto: CreateMovieDto,
     @UploadedFiles()
-    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
+    uploadedFiles: {
+      poster?: Express.Multer.File;
+      videoUrl?: Express.Multer.File;
+    },
   ) {
+    const files = {
+      poster: uploadedFiles.poster ? uploadedFiles.poster[0] : undefined,
+      videoUrl: uploadedFiles.videoUrl ? uploadedFiles.videoUrl[0] : undefined,
+    };
     return this.movieService.create(dto, files);
-  }
-
-  @Get('stream/:title')
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN)
-  streamMovie(@Param('title') title: string, req: Request, res: Response) {
-    return this.movieService.streamMovie(title, req, res);
   }
 
   @Get('all')
@@ -57,8 +61,13 @@ export class MovieController {
   @Patch(':title')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  @UseInterceptors(FileInterceptor('files'))
-  update(
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'poster', maxCount: 1 }, // Expecting 1 file for 'poster'
+      { name: 'video', maxCount: 1 }, // Expecting 1 file for 'video'
+    ]),
+  )
+  async update(
     @Param('title') title: string,
     @Body() updateDto: UpdateMovieDto,
     @UploadedFiles()

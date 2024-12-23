@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
   Inject,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMovieDto, UpdateMovieDto } from './dto';
@@ -12,6 +13,9 @@ import { CloudinaryService } from './cloudinary/cloudinary.service';
 import { Movie } from '@prisma/client';
 import { Request, Response } from 'express';
 import * as path from 'path';
+import * as ffmpeg from 'fluent-ffmpeg';
+import { promisify } from 'util';
+import FFprobeMetadata from './movie-interace';
 import { Cache } from '@nestjs/cache-manager';
 
 @Injectable()
@@ -23,11 +27,20 @@ export class MovieService {
   ) {}
 
   // Helper function to determine video resolution based on file size
-  private determineResolution(fileSize: number, duration: number): string[] {
-    // File size in bytes
-    const sizeInMB = fileSize / (1024 * 1024); // Convert to MB
+  private async getVideoMetadata(
+    filePath: string,
+  ): Promise<{ duration: number }> {
+    const ffprobePromise = promisify(ffmpeg.ffprobe);
+    const metadata = (await ffprobePromise(filePath)) as FFprobeMetadata;
+    return { duration: metadata.format.duration || 0 };
+  }
 
-    // Duration in seconds
+  private async determineResolution(
+    file: Express.Multer.File,
+  ): Promise<string[]> {
+    const { duration } = await this.getVideoMetadata(file.path);
+
+    const sizeInMB = file.size / (1024 * 1024); // Convert to MB
     const durationInMinutes = duration / 60; // Convert to minutes
 
     if (sizeInMB > 1000 || durationInMinutes > 120)
@@ -37,56 +50,81 @@ export class MovieService {
     return ['480p'];
   }
 
-  private validateFiles(files: {
-    poster?: Express.Multer.File;
-    video?: Express.Multer.File;
-  }) {
-    const allowedImageTypes = ['image/jpeg', 'image/png'];
+  private async validateFiles(
+    poster?: Express.Multer.File,
+    video?: Express.Multer.File,
+  ): Promise<{
+    posterFile: Express.Multer.File;
+    videoFile: Express.Multer.File;
+  }> {
+    if (!poster) {
+      throw new BadRequestException('Poster file is missing');
+    }
+
+    if (!video) {
+      throw new BadRequestException('Video file is missing');
+    }
+
+    // Define allowed mime types
+    const allowedImageTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/x-png',
+    ];
     const allowedVideoTypes = ['video/mp4', 'video/mkv'];
 
-    const posterFile = files.poster?.[0];
-    const videoFile = files.video?.[0];
-
-    if (posterFile && !allowedImageTypes.includes(posterFile.mimetype)) {
+    // Validate poster mime type
+    if (!allowedImageTypes.includes(poster.mimetype)) {
       throw new BadRequestException('Invalid poster file type');
     }
 
-    if (videoFile && !allowedVideoTypes.includes(videoFile.mimetype)) {
+    // Validate video mime type
+    if (!allowedVideoTypes.includes(video.mimetype)) {
       throw new BadRequestException('Invalid video file type');
     }
 
-    return { posterFile, videoFile };
+    // Return validated files
+    return { posterFile: poster, videoFile: video };
   }
 
   // Create a new movie
   async create(
     dto: CreateMovieDto,
-    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
+    files: { poster?: Express.Multer.File; videoUrl?: Express.Multer.File },
   ): Promise<Movie> {
     const { title, description, genre, duration } = dto;
 
-    if (!files || !files.poster || !files.video) {
+    if (!files || !files.poster || !files.videoUrl) {
       throw new BadRequestException('Poster and video files are required');
     }
 
     try {
+      // Check if movie already exists
       if (await this.findOneByName(title))
-        throw new BadRequestException(`Movie: ${title} already exists`);
+        throw new ConflictException(`Movie: ${title} already exists`);
 
+      const { poster, videoUrl } = files;
       // Validate files
-      const { posterFile, videoFile } = this.validateFiles(files);
-
-      // Determine resolution based on video file size
-      const resolution = this.determineResolution(
-        videoFile.size,
-        videoFile.duration,
+      const { posterFile, videoFile } = await this.validateFiles(
+        poster,
+        videoUrl,
       );
+      console.log(`lol`);
+
+      // Determine resolution based on video file metadata
+      const resolution = await this.determineResolution(videoFile); // Await the resolution determination
+
+      console.log('Poster buffer:', posterFile.buffer);
+      console.log('Video buffer:', videoFile.buffer);
 
       // Upload files to Cloudinary
-      const posterUpload = await this.cloudinary.upload(posterFile);
-      const videoUpload = await this.cloudinary.upload(videoFile);
+      const posterUpload = await this.cloudinary.upload(poster, 'posters');
+      const videoUpload = await this.cloudinary.upload(videoUrl, 'videos');
 
-      // Create a new movie
+      console.log('Poster upload result:', posterUpload);
+      console.log('Video upload result:', videoUpload);
+
       const createMovie = await this.prisma.movie.create({
         data: {
           title,
@@ -139,7 +177,7 @@ export class MovieService {
   }
 
   // Find a movie by Title
-  async findOneByName(title: string) {
+  async findOneByName(title: string): Promise<Movie | null> {
     const cacheKey = `movie:${title}`;
     const cachedMovie = await this.cacheManager.get<Movie>(cacheKey);
     if (cachedMovie) {
@@ -150,12 +188,12 @@ export class MovieService {
       where: { title },
       include: { showtimes: true },
     });
-    if (!movie) {
-      throw new NotFoundException(`Movie with Title ${title} not found`);
+
+    if (movie) {
+      await this.cacheManager.set(cacheKey, movie, 600); // Cache for 10 minutes
     }
 
-    await this.cacheManager.set(cacheKey, movie, 600); // Cache for 10 minutes
-    return movie;
+    return movie || null; // Return null if no movie is found
   }
 
   // Update a movie by Title
@@ -164,9 +202,10 @@ export class MovieService {
     updateDto: UpdateMovieDto,
     files: { poster?: Express.Multer.File; video?: Express.Multer.File },
   ) {
+    // Fetch the movie by title
     const movie = await this.findOneByName(title);
     if (!movie) {
-      throw new NotFoundException(`Movie with Title ${title} not found`);
+      throw new NotFoundException(`Movie with Title "${title}" not found`);
     }
 
     try {
@@ -175,24 +214,36 @@ export class MovieService {
       let updatedResolution = movie.resolution;
 
       // Validate and upload new poster
-      if (files.poster) {
-        const { posterFile } = this.validateFiles(files);
-        const posterUpload = await this.cloudinary.upload(posterFile);
+      if (files.poster && files.poster[0]) {
+        const posterFile = files.poster[0];
+        const allowedImageTypes = ['image/jpeg', 'image/png'];
+        if (!allowedImageTypes.includes(posterFile.mimetype)) {
+          throw new BadRequestException('Invalid poster file type');
+        }
+        const posterUpload = await this.cloudinary.upload(
+          posterFile,
+          'posters',
+        );
         updatedPosterUrl = posterUpload.secure_url; // New poster URL
       }
 
       // Validate and upload new video
-      if (files.video) {
-        const { videoFile } = this.validateFiles(files);
-        const videoUpload = await this.cloudinary.upload(videoFile);
+      if (files.video && files.video[0]) {
+        const videoFile = files.video[0];
+        const allowedVideoTypes = ['video/mp4', 'video/mkv'];
+        if (!allowedVideoTypes.includes(videoFile.mimetype)) {
+          throw new BadRequestException('Invalid video file type');
+        }
+
+        const videoUpload = await this.cloudinary.upload(videoFile, 'videos');
         updatedVideoUrl = videoUpload.secure_url; // New video URL
-        updatedResolution = this.determineResolution(
-          videoFile.size,
-          videoFile.duration,
-        );
+
+        // Determine resolution based on the new video file
+        const videoMetadata = await this.getVideoMetadata(videoFile.path); // Extract metadata
+        updatedResolution = await this.determineResolution(videoFile); // Await the resolution determination
       }
 
-      // Update the movie with the new data
+      // Update the movie in the database
       const updateMovie = await this.prisma.movie.update({
         where: { id: movie.id },
         data: {
@@ -203,11 +254,13 @@ export class MovieService {
         },
       });
 
-      await this.cacheManager.del(`movie:${title}`); // Invalidate cache for the updated movie
-      await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
+      // Invalidate cache for the updated movie and all movies
+      await this.cacheManager.del(`movie:${title}`);
+      await this.cacheManager.del('all_movies');
+
       return updateMovie;
     } catch (error) {
-      throw new BadRequestException(`Failed to upload files: ${error}`);
+      throw new BadRequestException(`Failed to update movie: ${error}`);
     }
   }
 

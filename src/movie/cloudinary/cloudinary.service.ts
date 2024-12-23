@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Response } from 'express';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import { Readable } from 'stream';
 
 @Injectable()
 export class CloudinaryService {
@@ -18,20 +19,23 @@ export class CloudinaryService {
     });
   }
 
-  async upload(file: Express.Multer.File): Promise<any> {
-    try {
-      const uploadResult = await cloudinary.uploader.upload(file.path, {
-        folder: 'movies', // Folder name on Cloudinary
-        resource_type: 'auto', // Automatically detect the file type
-        public_id: path.parse(file.originalname).name, // Use file name without extension
-      });
+  async upload(file: Express.Multer.File, folder: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder }, // Specify folder or other options here
+        (error, result) => {
+          if (error) {
+            return reject(error);
+          }
+          resolve(result);
+        },
+      );
 
-      // Delete the local file after successful upload
-      fs.unlinkSync(file.path);
-      return uploadResult;
-    } catch (error) {
-      throw new Error(`Cloudinary upload failed: ${error}`);
-    }
+      const bufferStream = new Readable();
+      bufferStream.push(file.buffer);
+      bufferStream.push(null); // End the stream
+      bufferStream.pipe(uploadStream);
+    });
   }
 
   // Stream a movie by file path
@@ -41,7 +45,7 @@ export class CloudinaryService {
     range: string,
   ): Promise<void> {
     if (!fs.existsSync(filePath)) {
-      throw new NotFoundException('Movie file not found');
+      throw new NotFoundException('Movie not found');
     }
 
     const movieStats = fs.statSync(filePath);

@@ -1,10 +1,5 @@
-import {
-  IsArray,
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  IsUrl,
-} from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateMovieDto {
   @IsNotEmpty()
@@ -20,19 +15,7 @@ export class CreateMovieDto {
   genre: string;
 
   @IsNotEmpty()
-  @IsUrl()
-  poster: string;
-
-  @IsUrl()
-  @IsNotEmpty()
-  videoUrl: string;
-
-  @IsNotEmpty()
-  @IsArray()
-  @IsString({ each: true })
-  resolution: string[];
-
-  @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => Number(value)) // Ensure transformation
   duration: number;
 }

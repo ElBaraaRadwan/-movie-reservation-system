@@ -4,6 +4,8 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { AppModule } from '../src/app.module';
 import * as pactum from 'pactum';
 import { CreateUserDto } from '../src/user/dto';
+import { CreateMovieDto } from '../src/movie/dto';
+import * as path from 'path';
 
 describe('APP E2E', () => {
   let app: INestApplication;
@@ -13,6 +15,7 @@ describe('APP E2E', () => {
   let admin_refresh_token: string;
   let customer_refresh_token: string;
   let customerDTO: CreateUserDto;
+  let movieDTO: CreateMovieDto;
   let adminDTO: CreateUserDto;
   let adminLoginDTO = { email: 'admin@example.com', password: 'admin123' };
   let customerLoginDTO = {
@@ -341,7 +344,55 @@ describe('APP E2E', () => {
       });
     });
     describe('Movie Stream', () => {});
-    describe('Create movie', () => {});
+    describe('Create movie', () => {
+      const posterPath = path.join(
+        'C:/Users/bebon/OneDrive/Изображения/Desktop-Wallpaper/undefined - Imgur (1).jpg',
+      );
+      const videoPath = path.join('C:/Users/bebon/Downloads/k.mp4');
+      beforeAll(() => {
+        movieDTO = {
+          title: 'Matrix',
+          description: 'A movie about dreams',
+          duration: 120,
+          genre: 'action',
+          poster: posterPath,
+          videoUrl: videoPath,
+        };
+      });
+
+      it('should create a movie as an admin', async () => {
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withMultiPartFormData({
+            title: movieDTO.title,
+            description: movieDTO.description,
+            duration: movieDTO.duration,
+            genre: movieDTO.genre,
+          })
+          .withFile('poster', movieDTO.poster) // Add files using withFile
+          .withFile('videoUrl', movieDTO.videoUrl) // Add files using withFile
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.CREATED)
+          .inspect(); // This will log the full response
+      });
+
+      it('should return FORBIDDEN for non admin user', async () => {
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withMultiPartFormData({
+            title: movieDTO.title,
+            description: movieDTO.description,
+            duration: movieDTO.duration,
+            genre: movieDTO.genre,
+          })
+          .withFile('poster', movieDTO.poster) // Add files using withFile
+          .withFile('videoUrl', movieDTO.videoUrl) // Add files using withFile
+          .withCookies(customer_access_token)
+          .expectStatus(HttpStatus.FORBIDDEN);
+      });
+    });
     describe('Update movie', () => {});
     describe('Delete movie', () => {});
   });

@@ -39,7 +39,7 @@ model Movie {
   genre       String
   poster      String // URL for the movie poster
   videoUrl    String
-  resolution  String[] // 720p, 1080p, etc.
+  resolution  String[]
   duration    Int // Duration in minutes
   showtimes   Showtime[]
   createdAt   DateTime   @default(now())
