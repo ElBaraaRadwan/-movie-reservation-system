@@ -14,6 +14,7 @@ import { Movie } from '@prisma/client';
 import { Request, Response } from 'express';
 import * as path from 'path';
 import * as ffmpeg from 'fluent-ffmpeg';
+import * as fs from 'fs';
 import { promisify } from 'util';
 import FFprobeMetadata from './movie-interace';
 import { Cache } from '@nestjs/cache-manager';
@@ -29,25 +30,57 @@ export class MovieService {
   // Helper function to determine video resolution based on file size
   private async getVideoMetadata(
     filePath: string,
-  ): Promise<{ duration: number }> {
+  ): Promise<{ duration: number; width: number; height: number }> {
     const ffprobePromise = promisify(ffmpeg.ffprobe);
-    const metadata = (await ffprobePromise(filePath)) as FFprobeMetadata;
-    return { duration: metadata.format.duration || 0 };
+    try {
+      const metadata = (await ffprobePromise(filePath)) as FFprobeMetadata;
+      const videoStream = metadata.streams.find(
+        (stream) => stream.width && stream.height,
+      );
+      if (!videoStream) {
+        throw new BadRequestException('No video stream found');
+      }
+      const duration = metadata.format?.duration || 0;
+      const { width, height } = videoStream;
+      return { duration, width, height };
+    } catch (error) {
+      console.error('Error retrieving video metadata:', error);
+      throw new BadRequestException('Unable to process video file metadata');
+    }
   }
 
   private async determineResolution(
     file: Express.Multer.File,
   ): Promise<string[]> {
-    const { duration } = await this.getVideoMetadata(file.path);
+    const uploadsDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir);
+    }
 
-    const sizeInMB = file.size / (1024 * 1024); // Convert to MB
-    const durationInMinutes = duration / 60; // Convert to minutes
+    const tempFilePath = path.join(
+      uploadsDir,
+      `${Date.now()}-${file.originalname}`,
+    );
+    fs.writeFileSync(tempFilePath, file.buffer);
 
-    if (sizeInMB > 1000 || durationInMinutes > 120)
-      return ['4K', '1080p', '720p'];
-    if (sizeInMB > 500 || durationInMinutes > 60) return ['1080p', '720p'];
-    if (sizeInMB > 100 || durationInMinutes > 30) return ['720p', '480p'];
-    return ['480p'];
+    try {
+      const { duration, width, height } =
+        await this.getVideoMetadata(tempFilePath);
+
+      const sizeInMB = file.size / (1024 * 1024); // Convert to MB
+      const durationInMinutes = duration / 60; // Convert to minutes
+
+      if (sizeInMB > 1000 || durationInMinutes > 120 || width >= 3840)
+        return ['4K', '1080p', '720p'];
+      if (sizeInMB > 500 || durationInMinutes > 60 || width >= 1920)
+        return ['1080p', '720p'];
+      if (sizeInMB > 100 || durationInMinutes > 30 || width >= 1280)
+        return ['720p', '480p'];
+      return ['480p'];
+    } finally {
+      // Clean up the temporary file
+      fs.unlinkSync(tempFilePath);
+    }
   }
 
   private async validateFiles(
@@ -110,17 +143,13 @@ export class MovieService {
         poster,
         videoUrl,
       );
-      console.log(`lol`);
 
       // Determine resolution based on video file metadata
       const resolution = await this.determineResolution(videoFile); // Await the resolution determination
 
-      console.log('Poster buffer:', posterFile.buffer);
-      console.log('Video buffer:', videoFile.buffer);
-
       // Upload files to Cloudinary
-      const posterUpload = await this.cloudinary.upload(poster, 'posters');
-      const videoUpload = await this.cloudinary.upload(videoUrl, 'videos');
+      const posterUpload = await this.cloudinary.upload(posterFile, 'posters');
+      const videoUpload = await this.cloudinary.upload(videoFile, 'videos');
 
       console.log('Poster upload result:', posterUpload);
       console.log('Video upload result:', videoUpload);
@@ -200,7 +229,7 @@ export class MovieService {
   async update(
     title: string,
     updateDto: UpdateMovieDto,
-    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
+    files: { poster?: Express.Multer.File; videoUrl?: Express.Multer.File },
   ) {
     // Fetch the movie by title
     const movie = await this.findOneByName(title);
@@ -209,53 +238,34 @@ export class MovieService {
     }
 
     try {
-      let updatedPosterUrl = movie.poster;
-      let updatedVideoUrl = movie.videoUrl;
-      let updatedResolution = movie.resolution;
-
       // Validate and upload new poster
-      if (files.poster && files.poster[0]) {
-        const posterFile = files.poster[0];
-        const allowedImageTypes = ['image/jpeg', 'image/png'];
-        if (!allowedImageTypes.includes(posterFile.mimetype)) {
-          throw new BadRequestException('Invalid poster file type');
-        }
-        const posterUpload = await this.cloudinary.upload(
-          posterFile,
-          'posters',
-        );
-        updatedPosterUrl = posterUpload.secure_url; // New poster URL
-      }
+      const { poster, videoUrl } = files;
+      // Validate files
+      const { posterFile, videoFile } = await this.validateFiles(
+        poster,
+        videoUrl,
+      );
 
-      // Validate and upload new video
-      if (files.video && files.video[0]) {
-        const videoFile = files.video[0];
-        const allowedVideoTypes = ['video/mp4', 'video/mkv'];
-        if (!allowedVideoTypes.includes(videoFile.mimetype)) {
-          throw new BadRequestException('Invalid video file type');
-        }
+      // Determine resolution based on video file metadata
+      const resolution = await this.determineResolution(videoFile); // Await the resolution determination
 
-        const videoUpload = await this.cloudinary.upload(videoFile, 'videos');
-        updatedVideoUrl = videoUpload.secure_url; // New video URL
+      const posterUpload = await this.cloudinary.upload(posterFile, 'posters');
 
-        // Determine resolution based on the new video file
-        const videoMetadata = await this.getVideoMetadata(videoFile.path); // Extract metadata
-        updatedResolution = await this.determineResolution(videoFile); // Await the resolution determination
-      }
+      const videoUpload = await this.cloudinary.upload(videoFile, 'videos');
 
       // Update the movie in the database
       const updateMovie = await this.prisma.movie.update({
         where: { id: movie.id },
         data: {
           ...updateDto,
-          poster: updatedPosterUrl,
-          videoUrl: updatedVideoUrl,
-          resolution: updatedResolution,
+          poster: posterUpload.secure_url,
+          videoUrl: videoUpload.secure_url,
+          resolution,
         },
       });
 
       // Invalidate cache for the updated movie and all movies
-      await this.cacheManager.del(`movie:${title}`);
+      await this.cacheManager.del(`movie:${movie.title}`);
       await this.cacheManager.del('all_movies');
 
       return updateMovie;

@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import * as fs from 'fs';
-import * as path from 'path';
 import { Response } from 'express';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { Readable } from 'stream';
@@ -20,21 +19,30 @@ export class CloudinaryService {
   }
 
   async upload(file: Express.Multer.File, folder: string): Promise<any> {
+    console.log('Cloudinary Received File:', file); // Log the received file
+
+    const resourceType = file.mimetype.startsWith('image/') ? 'image' : 'video'; // Determine the resource type
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder }, // Specify folder or other options here
+        { folder, resource_type: resourceType }, // Explicitly set resource type
         (error, result) => {
           if (error) {
+            console.log('Cloudinary Upload Error:', error); // Log the upload error
+
             return reject(error);
           }
           resolve(result);
         },
       );
 
+      console.log('Upload stream:', uploadStream); // Log the upload stream
       const bufferStream = new Readable();
+      console.log('File buffer:', file.buffer); // Log the file buffer Before
       bufferStream.push(file.buffer);
       bufferStream.push(null); // End the stream
       bufferStream.pipe(uploadStream);
+      console.log('Buffer stream:', bufferStream); // Log the buffer stream After
     });
   }
 
