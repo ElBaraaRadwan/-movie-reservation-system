@@ -68,7 +68,7 @@ export class PrismaService extends PrismaClient {
         description: 'Sci-Fi Movie',
         genre: 'action',
         poster: 'Non',
-        videoUrl: 'Non',
+        video: 'Non',
         duration: 120,
       },
     });

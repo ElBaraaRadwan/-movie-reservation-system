@@ -38,7 +38,7 @@ model Movie {
   description String
   genre       String
   poster      String // URL for the movie poster
-  videoUrl    String
+  video       String // URL for the movie 
   resolution  String[]
   duration    Int // Duration in minutes
   showtimes   Showtime[]

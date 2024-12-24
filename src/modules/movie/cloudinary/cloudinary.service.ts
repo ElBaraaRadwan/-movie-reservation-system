@@ -66,10 +66,10 @@ export class CloudinaryService {
   }
 
   async update(
-    existingUrls: { poster?: string; videoUrl?: string },
-    files: { poster?: Express.Multer.File; videoUrl?: Express.Multer.File },
-  ): Promise<{ poster?: string; videoUrl?: string }> {
-    const updates: { poster?: string; videoUrl?: string } = {};
+    existingUrls: { poster?: string; video?: string },
+    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
+  ): Promise<{ poster?: string; video?: string }> {
+    const updates: { poster?: string; video?: string } = {};
 
     try {
       if (files.poster) {
@@ -81,13 +81,13 @@ export class CloudinaryService {
         updates.poster = posterUpload.secure_url;
       }
 
-      if (files.videoUrl) {
-        if (existingUrls.videoUrl) {
-          const videoPublicId = this.extractPublicId(existingUrls.videoUrl);
+      if (files.video) {
+        if (existingUrls.video) {
+          const videoPublicId = this.extractPublicId(existingUrls.video);
           await this.delete(videoPublicId, 'video');
         }
-        const videoUpload = await this.upload(files.videoUrl, 'videos');
-        updates.videoUrl = videoUpload.secure_url;
+        const videoUpload = await this.upload(files.video, 'videos');
+        updates.video = videoUpload.secure_url;
       }
 
       return updates;
@@ -143,6 +143,49 @@ export class CloudinaryService {
     } catch (error) {
       console.error('Error while streaming movie:', error);
       throw new InternalServerErrorException('Failed to stream movie');
+    }
+  }
+
+  async cleanDB() {
+    console.log('Environment:', process.env.NODE_ENV);
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('cleanDB can only be run in test environment');
+    }
+    console.log('Cleaning Cloudinary resources...');
+
+    try {
+      // Delete all images
+      const imageResources = await cloudinary.api.resources({
+        resource_type: 'image',
+        type: 'upload',
+        max_results: 500,
+      });
+
+      for (const resource of imageResources.resources) {
+        await cloudinary.uploader.destroy(resource.public_id, {
+          resource_type: 'image',
+        });
+      }
+
+      // Delete all videos
+      const videoResources = await cloudinary.api.resources({
+        resource_type: 'video',
+        type: 'upload',
+        max_results: 500,
+      });
+
+      for (const resource of videoResources.resources) {
+        await cloudinary.uploader.destroy(resource.public_id, {
+          resource_type: 'video',
+        });
+      }
+
+      console.log('Cloudinary resources cleaned successfully.');
+    } catch (error) {
+      console.error('Cloudinary CleanDB Error:', error);
+      throw new InternalServerErrorException(
+        'Failed to clean Cloudinary resources',
+      );
     }
   }
 }

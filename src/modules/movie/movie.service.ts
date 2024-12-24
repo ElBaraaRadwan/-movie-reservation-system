@@ -120,11 +120,11 @@ export class MovieService {
   // Create a new movie
   async create(
     dto: CreateMovieDto,
-    files: { poster?: Express.Multer.File; videoUrl?: Express.Multer.File },
+    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
   ): Promise<Movie> {
     const { title, description, genre } = dto;
 
-    if (!files || !files.poster || !files.videoUrl) {
+    if (!files || !files.poster || !files.video) {
       throw new BadRequestException('Poster and video files are required');
     }
 
@@ -132,12 +132,9 @@ export class MovieService {
     if (await this.findOneByName(title))
       throw new ConflictException(`Movie: ${title} already exists`);
 
-    const { poster, videoUrl } = files;
+    const { poster, video } = files;
     // Validate files
-    const { posterFile, videoFile } = await this.validateFiles(
-      poster,
-      videoUrl,
-    );
+    const { posterFile, videoFile } = await this.validateFiles(poster, video);
 
     // Determine resolution based on video file metadata
     const { resolution, duration } = await this.determineMetadata(videoFile); // Await the resolution determination
@@ -156,7 +153,7 @@ export class MovieService {
         genre,
         duration,
         poster: posterUpload.secure_url,
-        videoUrl: videoUpload.secure_url,
+        video: videoUpload.secure_url,
         resolution,
       },
     });
@@ -169,14 +166,14 @@ export class MovieService {
     try {
       // Fetch movie details
       const movie = await this.findOneByName(title);
-      if (!movie || !movie.videoUrl) {
+      if (!movie || !movie.video) {
         throw new HttpException('Movie not found', HttpStatus.NOT_FOUND);
       }
 
       const range = req.headers.range;
 
       // Use the Cloudinary streaming method
-      await this.cloudinary.streamMovie(movie.videoUrl, res, range);
+      await this.cloudinary.streamMovie(movie.video, res, range);
     } catch (error) {
       console.error('Error while streaming movie:', error);
       throw new HttpException(
@@ -225,7 +222,7 @@ export class MovieService {
   async update(
     title: string,
     updateDto: UpdateMovieDto,
-    files: { poster?: Express.Multer.File; videoUrl?: Express.Multer.File },
+    files: { poster?: Express.Multer.File; video?: Express.Multer.File },
   ) {
     // Fetch the movie by title
     const movie = await this.findOneByName(title);
@@ -234,17 +231,14 @@ export class MovieService {
     }
 
     // Validate and upload new poster
-    const { poster, videoUrl } = files;
+    const { poster, video } = files;
     // Validate files
-    const { posterFile, videoFile } = await this.validateFiles(
-      poster,
-      videoUrl,
-    );
+    const { posterFile, videoFile } = await this.validateFiles(poster, video);
 
     // Initialize the `updates` object for Cloudinary and Prisma
     const cloudinaryUpdates = await this.cloudinary.update(
-      { poster: movie.poster, videoUrl: movie.videoUrl },
-      { poster: posterFile, videoUrl: videoFile },
+      { poster: movie.poster, video: movie.video },
+      { poster: posterFile, video: videoFile },
     );
 
     const updates: Partial<
@@ -252,12 +246,12 @@ export class MovieService {
         resolution: string[];
         duration: number;
         poster: string;
-        videoUrl: string;
+        video: string;
       }
     > = {
       ...updateDto,
       poster: cloudinaryUpdates.poster,
-      videoUrl: cloudinaryUpdates.videoUrl,
+      video: cloudinaryUpdates.video,
     };
 
     // If a new video was uploaded, determine its resolution

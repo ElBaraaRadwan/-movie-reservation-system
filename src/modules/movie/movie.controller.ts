@@ -29,7 +29,7 @@ export class MovieController {
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'poster', maxCount: 1 }, // Expecting 1 file for 'poster'
-      { name: 'videoUrl', maxCount: 1 }, // Expecting 1 file for 'videoUrl'
+      { name: 'video', maxCount: 1 }, // Expecting 1 file for 'video'
     ]),
   )
   async create(
@@ -37,12 +37,12 @@ export class MovieController {
     @UploadedFiles()
     uploadedFiles: {
       poster?: Express.Multer.File;
-      videoUrl?: Express.Multer.File;
+      video?: Express.Multer.File;
     },
   ) {
     const files = {
       poster: uploadedFiles.poster ? uploadedFiles.poster[0] : undefined,
-      videoUrl: uploadedFiles.videoUrl ? uploadedFiles.videoUrl[0] : undefined,
+      video: uploadedFiles.video ? uploadedFiles.video[0] : undefined,
     };
     return this.movieService.create(dto, files);
   }
@@ -63,7 +63,7 @@ export class MovieController {
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'poster', maxCount: 1 }, // Expecting 1 file for 'poster'
-      { name: 'videoUrl', maxCount: 1 }, // Expecting 1 file for 'videoUrl'
+      { name: 'video', maxCount: 1 }, // Expecting 1 file for 'video'
     ]),
   )
   async update(
@@ -72,12 +72,12 @@ export class MovieController {
     @UploadedFiles()
     uploadedFiles: {
       poster?: Express.Multer.File;
-      videoUrl?: Express.Multer.File;
+      video?: Express.Multer.File;
     },
   ) {
     const files = {
       poster: uploadedFiles.poster ? uploadedFiles.poster[0] : undefined,
-      videoUrl: uploadedFiles.videoUrl ? uploadedFiles.videoUrl[0] : undefined,
+      video: uploadedFiles.video ? uploadedFiles.video[0] : undefined,
     };
     return this.movieService.update(title, updateDto, files);
   }
