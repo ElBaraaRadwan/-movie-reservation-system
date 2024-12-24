@@ -10,10 +10,10 @@ import {
 } from '@nestjs/common';
 import { ReservationService } from './reservation.service';
 import { CreateReservationDto, UpdateReservationDto } from './dto';
-import { JwtGuard, RolesGuard } from 'src/auth/guard';
 import { Role } from '@prisma/client';
-import { GetUser, Roles } from 'src/auth/decorator';
-import { UserEntity } from 'src/user/entities';
+import { UserEntity } from 'src/modules/user/entities';
+import { JwtGuard, RolesGuard } from '../auth/guard';
+import { GetUser, Roles } from '../auth/decorator';
 
 @UseGuards(JwtGuard)
 @Controller('reservation')

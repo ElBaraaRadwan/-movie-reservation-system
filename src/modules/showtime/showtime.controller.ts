@@ -9,11 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ShowtimeService } from './showtime.service';
-import { CreateShowtimeDto } from './dto';
-import { UpdateShowtimeDto } from './dto';
-import { JwtGuard, RolesGuard } from 'src/auth/guard';
-import { Roles } from 'src/auth/decorator';
+import { UpdateShowtimeDto, CreateShowtimeDto } from './dto';
 import { Role } from '@prisma/client';
+import { JwtGuard, RolesGuard } from '../auth/guard';
+import { Roles } from '../auth/decorator';
 
 @UseGuards(JwtGuard)
 @Controller('showtime')

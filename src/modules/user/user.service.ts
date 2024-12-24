@@ -5,12 +5,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { UserEntity } from './entities/user.entity';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Cache } from '@nestjs/cache-manager';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class UserService {

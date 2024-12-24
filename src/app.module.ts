@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
-import { MovieModule } from './movie/movie.module';
-import { ShowtimeModule } from './showtime/showtime.module';
-import { ReservationModule } from './reservation/reservation.module';
-import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
-import { CloudinaryService } from './movie/cloudinary/cloudinary.service';
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
+import { MovieModule } from './modules/movie/movie.module';
+import { ShowtimeModule } from './modules/showtime/showtime.module';
+import { ReservationModule } from './modules/reservation/reservation.module';
+import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { CloudinaryService } from './modules/movie/cloudinary/cloudinary.service';
 
 @Module({
   imports: [

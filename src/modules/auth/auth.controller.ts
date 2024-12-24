@@ -2,15 +2,13 @@ import { Controller, Post, UseGuards, Get, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GoogleGuard, JwtGuard, JwtRefreshGuard } from './guard';
 import { GetUser } from './decorator';
-import { UserEntity } from 'src/user/entities';
+import { UserEntity } from 'src/modules/user/entities';
 import { LocalGuard } from './guard/local.guard';
 import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @UseGuards(LocalGuard)

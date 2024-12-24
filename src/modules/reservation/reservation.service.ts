@@ -1,10 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateReservationDto } from './dto';
-import { UpdateReservationDto } from './dto';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { ShowtimeService } from 'src/showtime/showtime.service';
+import { CreateReservationDto, UpdateReservationDto } from './dto';
 import { Cache } from '@nestjs/cache-manager';
 import { Showtime } from '@prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { ShowtimeService } from '../showtime/showtime.service';
 
 @Injectable()
 export class ReservationService {

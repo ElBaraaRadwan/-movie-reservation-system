@@ -15,6 +15,6 @@ async function bootstrap() {
   );
   app.use(cookieParser());
   await app.listen(3001);
-  console.log(`Application is running on: http://${hostname}:3000`);
+  console.log(`Application is running on: http://${hostname}:3001`);
 }
 bootstrap();

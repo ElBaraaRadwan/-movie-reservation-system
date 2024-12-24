@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateShowtimeDto } from './dto';
 import { UpdateShowtimeDto } from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { MovieService } from 'src/movie/movie.service';
+import { MovieService } from 'src/modules/movie/movie.service';
 import { Cache } from '@nestjs/cache-manager';
 import { Showtime } from '@prisma/client';
 

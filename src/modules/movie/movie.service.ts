@@ -7,9 +7,7 @@ import {
   Inject,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { CreateMovieDto, UpdateMovieDto } from './dto';
-import { CloudinaryService } from './cloudinary/cloudinary.service';
 import { Movie } from '@prisma/client';
 import { Request, Response } from 'express';
 import * as path from 'path';
@@ -18,6 +16,8 @@ import * as fs from 'fs';
 import { promisify } from 'util';
 import FFprobeMetadata from './movie-interace';
 import { Cache } from '@nestjs/cache-manager';
+import { CloudinaryService } from './cloudinary/cloudinary.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class MovieService {
@@ -26,28 +26,6 @@ export class MovieService {
     private cloudinary: CloudinaryService,
     @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
   ) {}
-
-  // Helper function to determine video resolution based on file size
-  private async getVideoMetadata(
-    filePath: string,
-  ): Promise<{ duration: number; width: number; height: number }> {
-    const ffprobePromise = promisify(ffmpeg.ffprobe);
-    try {
-      const metadata = (await ffprobePromise(filePath)) as FFprobeMetadata;
-      const videoStream = metadata.streams.find(
-        (stream) => stream.width && stream.height,
-      );
-      if (!videoStream) {
-        throw new BadRequestException('No video stream found');
-      }
-      const duration = metadata.format?.duration || 0;
-      const { width, height } = videoStream;
-      return { duration, width, height };
-    } catch (error) {
-      console.error('Error retrieving video metadata:', error);
-      throw new BadRequestException('Unable to process video file metadata');
-    }
-  }
 
   private async determineMetadata(
     file: Express.Multer.File,
@@ -64,8 +42,16 @@ export class MovieService {
     fs.writeFileSync(tempFilePath, file.buffer);
 
     try {
-      const { duration, width, height } =
-        await this.getVideoMetadata(tempFilePath);
+      const ffprobePromise = promisify(ffmpeg.ffprobe);
+      const metadata = (await ffprobePromise(tempFilePath)) as FFprobeMetadata;
+      const videoStream = metadata.streams.find(
+        (stream) => stream.width && stream.height,
+      );
+      if (!videoStream) {
+        throw new BadRequestException('No video stream found');
+      }
+      const duration = metadata.format?.duration || 0;
+      const { width, height } = videoStream;
 
       const sizeInMB = file.size / (1024 * 1024); // Convert to MB
       const durationInMinutes = duration / 60; // Convert to minutes
@@ -154,7 +140,7 @@ export class MovieService {
     );
 
     // Determine resolution based on video file metadata
-    const {resolution, duration} = await this.determineMetadata(videoFile); // Await the resolution determination
+    const { resolution, duration } = await this.determineMetadata(videoFile); // Await the resolution determination
 
     // Upload files to Cloudinary
     const posterUpload = await this.cloudinary.upload(posterFile, 'posters');
@@ -247,56 +233,51 @@ export class MovieService {
       throw new NotFoundException(`Movie with Title "${title}" not found`);
     }
 
-    try {
-      // Validate and upload new poster
-      const { poster, videoUrl } = files;
-      // Validate files
-      const { posterFile, videoFile } = await this.validateFiles(
-        poster,
-        videoUrl,
-      );
+    // Validate and upload new poster
+    const { poster, videoUrl } = files;
+    // Validate files
+    const { posterFile, videoFile } = await this.validateFiles(
+      poster,
+      videoUrl,
+    );
 
-      // Initialize the `updates` object for Cloudinary and Prisma
-      const cloudinaryUpdates = await this.cloudinary.update(
-        { poster: movie.poster, videoUrl: movie.videoUrl },
-        { poster: posterFile, videoUrl: videoFile },
-        'movies',
-      );
+    // Initialize the `updates` object for Cloudinary and Prisma
+    const cloudinaryUpdates = await this.cloudinary.update(
+      { poster: movie.poster, videoUrl: movie.videoUrl },
+      { poster: posterFile, videoUrl: videoFile },
+    );
 
-      const updates: Partial<
-        UpdateMovieDto & {
-          resolution: string[];
-          duration: number;
-          poster: string;
-          videoUrl: string;
-        }
-      > = {
-        ...updateDto,
-        poster: cloudinaryUpdates.poster,
-        videoUrl: cloudinaryUpdates.videoUrl,
-      };
-
-      // If a new video was uploaded, determine its resolution
-      if (videoFile) {
-        const {resolution, duration} = await this.determineMetadata(videoFile);
-        updates.resolution = resolution;
-        updates.duration = duration
+    const updates: Partial<
+      UpdateMovieDto & {
+        resolution: string[];
+        duration: number;
+        poster: string;
+        videoUrl: string;
       }
+    > = {
+      ...updateDto,
+      poster: cloudinaryUpdates.poster,
+      videoUrl: cloudinaryUpdates.videoUrl,
+    };
 
-      // Update the movie in the database
-      const updatedMovie = await this.prisma.movie.update({
-        where: { id: movie.id },
-        data: updates,
-      });
-
-      // Invalidate cache for the updated movie and all movies
-      await this.cacheManager.del(`movie:${movie.title}`);
-      await this.cacheManager.del('all_movies');
-
-      return updatedMovie;
-    } catch (error) {
-      throw new BadRequestException(`Failed to update movie: ${error}`);
+    // If a new video was uploaded, determine its resolution
+    if (videoFile) {
+      const { resolution, duration } = await this.determineMetadata(videoFile);
+      updates.resolution = resolution;
+      updates.duration = duration;
     }
+
+    // Update the movie in the database
+    const updatedMovie = await this.prisma.movie.update({
+      where: { id: movie.id },
+      data: updates,
+    });
+
+    // Invalidate cache for the updated movie and all movies
+    await this.cacheManager.del(`movie:${movie.title}`);
+    await this.cacheManager.del('all_movies');
+
+    return updatedMovie;
   }
 
   // Delete a movie by Title

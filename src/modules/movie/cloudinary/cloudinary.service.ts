@@ -68,7 +68,6 @@ export class CloudinaryService {
   async update(
     existingUrls: { poster?: string; videoUrl?: string },
     files: { poster?: Express.Multer.File; videoUrl?: Express.Multer.File },
-    folder: string,
   ): Promise<{ poster?: string; videoUrl?: string }> {
     const updates: { poster?: string; videoUrl?: string } = {};
 
@@ -78,7 +77,7 @@ export class CloudinaryService {
           const posterPublicId = this.extractPublicId(existingUrls.poster);
           await this.delete(posterPublicId, 'image');
         }
-        const posterUpload = await this.upload(files.poster, folder);
+        const posterUpload = await this.upload(files.poster, 'posters');
         updates.poster = posterUpload.secure_url;
       }
 
@@ -87,7 +86,7 @@ export class CloudinaryService {
           const videoPublicId = this.extractPublicId(existingUrls.videoUrl);
           await this.delete(videoPublicId, 'video');
         }
-        const videoUpload = await this.upload(files.videoUrl, folder);
+        const videoUpload = await this.upload(files.videoUrl, 'videos');
         updates.videoUrl = videoUpload.secure_url;
       }
 

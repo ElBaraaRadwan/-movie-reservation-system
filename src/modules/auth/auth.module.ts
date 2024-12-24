@@ -10,7 +10,7 @@ import {
   LocalStrategy,
 } from './strategies';
 import { PassportModule } from '@nestjs/passport';
-import { UserModule } from 'src/user/user.module';
+import { UserModule } from 'src/modules/user/user.module';
 import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
