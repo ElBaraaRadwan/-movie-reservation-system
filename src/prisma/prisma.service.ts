@@ -67,9 +67,12 @@ export class PrismaService extends PrismaClient {
         title: 'Inception',
         description: 'Sci-Fi Movie',
         genre: 'action',
-        poster: 'Non',
-        video: 'Non',
+        poster:
+          'E:/Projects/learning-nest-js/movie-reservation-system/src/resources/Inception.jpg',
+        video:
+          'E:/Projects/learning-nest-js/movie-reservation-system/src/resources/Inception-HD.mp4',
         duration: 120,
+        resolution: { set: ['1080p'] },
       },
     });
   }

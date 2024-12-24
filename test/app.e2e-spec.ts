@@ -3,7 +3,9 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { AppModule } from '../src/app.module';
 import * as pactum from 'pactum';
+import * as fs from 'fs';
 import * as path from 'path';
+import FormData from 'form-data';
 import { CreateUserDto } from '../src/modules/user/dto';
 import { CreateMovieDto } from '../src/modules/movie/dto';
 import { RedisService } from '../src/redis/redis.service';
@@ -88,9 +90,6 @@ describe('APP E2E', () => {
     admin_refresh_token = adminRes.headers['set-cookie']
       .find((cookie) => cookie.startsWith('refresh_token'))
       .split(';')[0];
-
-    console.log('admin Cookie:', adminRes.headers['set-cookie']);
-    console.log('customer Cookie:', customerRes.headers['set-cookie']);
   });
 
   afterAll(async () => {
@@ -345,63 +344,194 @@ describe('APP E2E', () => {
           .expectStatus(HttpStatus.OK);
       });
 
-      it('should return NOT FOUND for invalid movie', async () => {
+      it('should return NULL for invalid movie', async () => {
         await pactum
           .spec()
           .get('/movie/FakeName')
           .withCookies(admin_access_token)
-          .expectStatus(HttpStatus.NOT_FOUND);
+          .expectBody(null);
       });
     });
     describe('Movie Stream', () => {});
     describe('Create movie', () => {
-      const posterPath = path.join(
-        'C:/Users/bebon/OneDrive/Изображения/Desktop-Wallpaper/undefined - Imgur (1).jpg',
-      );
-      const videoPath = path.join('C:/Users/bebon/Downloads/k.mp4');
-      beforeAll(() => {
-        movieDTO = {
-          title: 'Matrix',
-          description: 'A movie about dreams',
-          genre: 'action',
-        };
+      it('should create a movie', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        // Create a FormData instance
+        const formData = new FormData();
+        formData.append('title', 'New Movie');
+        formData.append('description', 'A great movie');
+        formData.append('genre', 'Drama');
+        formData.append('poster', fs.createReadStream(posterPath));
+        formData.append('video', fs.createReadStream(videoPath));
+
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders({
+            ...formData.getHeaders(),
+            Cookie: admin_access_token,
+          })
+          .withBody(formData)
+          .expectStatus(HttpStatus.CREATED)
+          .expectJsonLike({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          });
       });
 
-      //   it('should create a movie as an admin', async () => {
-      //     await pactum
-      //       .spec()
-      //       .post('/movie/create')
-      //       .withMultiPartFormData({
-      //         title: movieDTO.title,
-      //         description: movieDTO.description,
-      //         duration: movieDTO.duration,
-      //         genre: movieDTO.genre,
-      //       })
-      //       .withFile('poster', movieDTO.poster) // Add files using withFile
-      //       .withFile('video', movieDTO.video) // Add files using withFile
-      //       .withCookies(admin_access_token)
-      //       .expectStatus(HttpStatus.CREATED)
-      //       .inspect(); // This will log the full response
-      //   });
+      it('should return BAD REQUEST for missing files', async () => {
+        const formData = new FormData();
+        formData.append('title', 'New Movie');
+        formData.append('description', 'A great movie');
+        formData.append('genre', 'Drama');
 
-      //   it('should return FORBIDDEN for non admin user', async () => {
-      //     await pactum
-      //       .spec()
-      //       .post('/movie/create')
-      //       .withMultiPartFormData({
-      //         title: movieDTO.title,
-      //         description: movieDTO.description,
-      //         duration: movieDTO.duration,
-      //         genre: movieDTO.genre,
-      //       })
-      //       .withFile('poster', movieDTO.poster) // Add files using withFile
-      //       .withFile('video', movieDTO.video) // Add files using withFile
-      //       .withCookies(customer_access_token)
-      //       .expectStatus(HttpStatus.FORBIDDEN);
-      //   });
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders({
+            ...formData.getHeaders(),
+            Cookie: admin_access_token,
+          })
+          .withBody(formData)
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+
+      it('should return CONFLICT for existing movie', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        // Create a FormData instance
+        const formData = new FormData();
+        formData.append('title', 'Inception');
+        formData.append('description', 'A great movie');
+        formData.append('genre', 'Drama');
+        formData.append('poster', fs.createReadStream(posterPath));
+        formData.append('video', fs.createReadStream(videoPath));
+
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders({
+            ...formData.getHeaders(),
+            Cookie: admin_access_token,
+          })
+          .withBody(formData)
+          .expectStatus(HttpStatus.CONFLICT);
+      });
+
+      it('should return FORBIDDEN for non admin user', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        // Create a FormData instance
+        const formData = new FormData();
+        formData.append('title', 'New Movie');
+        formData.append('description', 'A great movie');
+        formData.append('genre', 'Drama');
+        formData.append('poster', fs.createReadStream(posterPath));
+        formData.append('video', fs.createReadStream(videoPath));
+
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders({
+            ...formData.getHeaders(),
+            Cookie: customer_access_token,
+          })
+          .withBody(formData)
+          .expectStatus(HttpStatus.FORBIDDEN);
+      });
     });
-    describe('Update movie', () => {});
-    describe('Delete movie', () => {});
+    describe('Update movie', () => {
+      it('should update a movie', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        // Create a FormData instance
+        const formData = new FormData();
+        formData.append('title', 'Inception');
+        formData.append('description', 'A great movie');
+        formData.append('genre', 'Drama');
+        formData.append('poster', fs.createReadStream(posterPath));
+        formData.append('video', fs.createReadStream(videoPath));
+
+        await pactum
+          .spec()
+          .patch('/movie/Inception')
+          .withHeaders({
+            ...formData.getHeaders(),
+            Cookie: admin_access_token,
+          })
+          .withBody(formData)
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLike({
+            title: 'Inception',
+            description: 'A great movie',
+            genre: 'Drama',
+          });
+      });
+
+      it('should return BAD REQUEST for missing files', async () => {
+        const formData = new FormData();
+        formData.append('title', 'Inception');
+        formData.append('description', 'A great movie');
+        formData.append('genre', 'Drama');
+
+        await pactum
+          .spec()
+          .patch('/movie/Inception')
+          .withHeaders({
+            ...formData.getHeaders(),
+            Cookie: admin_access_token,
+          })
+          .withBody(formData)
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
+    describe('Delete movie', () => {
+      it('should delete a movie', async () => {
+        await pactum
+          .spec()
+          .delete('/movie/Inception')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return NOT FOUND for invalid movie', async () => {
+        await pactum
+          .spec()
+          .delete('/movie/FakeName')
+          .withCookies(admin_access_token)
+          .expectStatus(HttpStatus.NOT_FOUND);
+      });
+    });
   });
 
   //   describe('Showtimes', () => {
