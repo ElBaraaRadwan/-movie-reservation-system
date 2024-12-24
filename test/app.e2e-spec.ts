@@ -36,6 +36,8 @@ describe('APP E2E', () => {
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
       }),
     );
     await app.init();
@@ -45,8 +47,8 @@ describe('APP E2E', () => {
     redis = app.get(RedisService);
     cloudinary = app.get(CloudinaryService);
     await prisma.cleanDB(); // Clean the database
-    await redis.cleanDB(); // Clean the redis database
-    await cloudinary.cleanDB(); // Clean the cloudinary database
+    // await redis.cleanDB(); // Clean the redis database
+    // await cloudinary.cleanDB(); // Clean the cloudinary database
     await prisma.seedDB(); // Seed the database
     pactum.request.setBaseUrl('http://localhost:3001');
 

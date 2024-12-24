@@ -8,8 +8,10 @@ import { v2 as cloudinary } from 'cloudinary';
 import * as fs from 'fs';
 import { Response } from 'express';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import { Readable } from 'stream';
+import { pipeline, Readable } from 'stream';
+import { promisify } from 'util';
 
+// const pipelineAsync = promisify(pipeline);
 @Injectable()
 export class CloudinaryService {
   public storage: CloudinaryStorage;
@@ -100,48 +102,50 @@ export class CloudinaryService {
   }
 
   async streamMovie(
-    filePath: string,
+    video: string,
     res: Response,
     range: string,
   ): Promise<void> {
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException('Movie not found');
-    }
-
-    const movieStats = fs.statSync(filePath);
-    const fileSize = movieStats.size;
-
     try {
+      // Parse the range if available
+      const headers: Record<string, string> = {};
       if (range) {
-        const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(startStr, 10);
-        const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
-
-        if (start >= fileSize || end >= fileSize) {
-          throw new NotFoundException('Invalid range');
-        }
-
-        const chunkSize = end - start + 1;
-        const fileStream = fs.createReadStream(filePath, { start, end });
-
-        res.writeHead(206, {
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunkSize,
-          'Content-Type': 'video/mp4',
-        });
-
-        fileStream.pipe(res);
-      } else {
-        res.writeHead(200, {
-          'Content-Length': fileSize,
-          'Content-Type': 'video/mp4',
-        });
-
-        fs.createReadStream(filePath).pipe(res);
+        headers.Range = range;
       }
+
+      // Send a request to Cloudinary for the video stream
+      const cloudinaryResponse = await fetch(video, { headers });
+
+      if (!cloudinaryResponse.ok) {
+        throw new NotFoundException('Failed to fetch video from Cloudinary');
+      }
+
+      // Forward headers from Cloudinary's response to the client
+      const responseHeaders: Record<string, string> = {};
+      cloudinaryResponse.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      // Set response headers
+      res.writeHead(cloudinaryResponse.status, responseHeaders);
+
+      // Convert ReadableStream to Node.js Readable
+      const reader = cloudinaryResponse.body.getReader();
+      const stream = new Readable({
+        async read() {
+          const { done, value } = await reader.read();
+          if (done) {
+            this.push(null); // End the stream
+          } else {
+            this.push(Buffer.from(value)); // Push chunks to the stream
+          }
+        },
+      });
+
+      // Pipe the converted stream to the response
+      stream.pipe(res);
     } catch (error) {
-      console.error('Error while streaming movie:', error);
+      console.error('Error while streaming movie from Cloudinary:', error);
       throw new InternalServerErrorException('Failed to stream movie');
     }
   }

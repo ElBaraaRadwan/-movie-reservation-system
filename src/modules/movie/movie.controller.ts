@@ -9,6 +9,8 @@ import {
   UseInterceptors,
   UploadedFiles,
   UseGuards,
+  Res,
+  Req,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -17,6 +19,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Role } from '@prisma/client';
 import { JwtGuard, RolesGuard } from '../auth/guard';
 import { Roles } from '../auth/decorator';
+import { Request, Response } from 'express';
 
 @UseGuards(JwtGuard)
 @Controller('movie')
@@ -45,6 +48,15 @@ export class MovieController {
       video: uploadedFiles.video ? uploadedFiles.video[0] : undefined,
     };
     return this.movieService.create(dto, files);
+  }
+
+  @Get('stream/:title')
+  streamMovie(
+    @Param('title') title: string,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    return this.movieService.streamMovie(title, req, res);
   }
 
   @Get('all')

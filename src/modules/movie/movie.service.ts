@@ -163,24 +163,23 @@ export class MovieService {
   }
 
   async streamMovie(title: string, req: Request, res: Response) {
-    try {
-      // Fetch movie details
-      const movie = await this.findOneByName(title);
-      if (!movie || !movie.video) {
-        throw new HttpException('Movie not found', HttpStatus.NOT_FOUND);
-      }
-
-      const range = req.headers.range;
-
-      // Use the Cloudinary streaming method
-      await this.cloudinary.streamMovie(movie.video, res, range);
-    } catch (error) {
-      console.error('Error while streaming movie:', error);
-      throw new HttpException(
-        'Failed to stream movie',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    // Fetch movie details
+    const movie = await this.findOneByName(title);
+    if (!movie || !movie.video) {
+      throw new HttpException('Movie not found', HttpStatus.NOT_FOUND);
     }
+
+    const range = req.headers.range;
+    // Validate the video URL before streaming
+    try {
+      new URL(movie.video); // Throws an error if the URL is invalid
+    } catch (error) {
+      console.error('Invalid video URL:', error);
+      throw new BadRequestException('Invalid video URL');
+    }
+
+    // Use the Cloudinary streaming method
+    await this.cloudinary.streamMovie(movie.video, res, range);
   }
 
   // Find all movies
