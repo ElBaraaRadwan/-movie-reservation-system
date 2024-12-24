@@ -1,5 +1,4 @@
-import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateMovieDto {
   @IsNotEmpty()
@@ -13,9 +12,4 @@ export class CreateMovieDto {
   @IsNotEmpty()
   @IsString()
   genre: string;
-
-  @IsNotEmpty()
-  @IsNumber()
-  @Transform(({ value }) => Number(value)) // Ensure transformation
-  duration: number;
 }
