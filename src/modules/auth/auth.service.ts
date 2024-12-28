@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
@@ -22,17 +18,13 @@ export class AuthService {
 
   async login(user: UserEntity, res: Response, redirect = false) {
     try {
-      const expiresAccessToken = new Date();
-      expiresAccessToken.setSeconds(
-        expiresAccessToken.getTime() +
-          parseInt(this.config.getOrThrow<string>('JWT_EXPIRES_IN')),
-      ); // Set the expiration time for the access token in seconds
+      const accessTokenTTL = parseInt(
+        this.config.getOrThrow<string>('JWT_EXPIRES_IN'),
+      );
 
-      const expiresRefreshToken = new Date();
-      expiresRefreshToken.setSeconds(
-        expiresRefreshToken.getTime() +
-          parseInt(this.config.getOrThrow<string>('JWT_EXPIRES_IN')),
-      ); // Set the expiration time for the refresh token in seconds
+      const refreshTokenTTL = parseInt(
+        this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN'),
+      );
 
       const tokenPayload: { sub: number } = {
         sub: user.id,
@@ -48,21 +40,22 @@ export class AuthService {
         expiresIn: `${this.config.getOrThrow<string>('JWT_REFRESH_EXPIRES_IN')}s`,
       });
 
-      // Store refresh token in Redis
+      // Store the refresh token in Redis with TTL
       await this.REDIS.set(
         `refresh_token:${user.id}`,
         refreshToken,
-        this.config.getOrThrow<number>('JWT_REFRESH_EXPIRES_IN'),
+        refreshTokenTTL,
       );
 
+      // Set cookies
       res.cookie('access_token', accessToken, {
         httpOnly: true,
-        expires: expiresAccessToken,
+        maxAge: accessTokenTTL * 1000,
         secure: this.config.get('NODE_ENV') === 'production',
       });
       res.cookie('refresh_token', refreshToken, {
         httpOnly: true,
-        expires: expiresRefreshToken,
+        maxAge: refreshTokenTTL * 1000,
         secure: this.config.get('NODE_ENV') === 'production',
       });
 
@@ -91,10 +84,8 @@ export class AuthService {
 
   async verifyUserRefreshToken(refreshToken: string, id: number) {
     try {
-      // Retrieve refresh token from Redis
-      const storedToken = await this.REDIS.get(`refresh_token:${id}`);
-      console.log('Stored token:', storedToken);
-
+      // Retrieve the refresh token from Redis
+      const storedToken = await this.REDIS.get<string>(`refresh_token:${id}`);
       if (!storedToken || storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
@@ -106,10 +97,9 @@ export class AuthService {
 
   async logOut(user: UserEntity, res: Response): Promise<void> {
     try {
-      // Remove refresh token from Redis
-      await this.REDIS.del(`refresh_token:${user.id}`);
-
       console.log('Clearing cookies...');
+      // Delete the refresh token from Redis
+      await this.REDIS.del(`refresh_token:${user.id}`);
 
       // Clear cookies from the response
       res.clearCookie('access_token', { path: '/' });

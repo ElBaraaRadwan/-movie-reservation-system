@@ -1,116 +1,126 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateReservationDto, UpdateReservationDto } from './dto';
-import { Cache } from '@nestjs/cache-manager';
-import { Showtime } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ShowtimeService } from '../showtime/showtime.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class ReservationService {
   constructor(
     private prisma: PrismaService,
-    private movieShowtime: ShowtimeService,
-    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
+    private readonly REDIS: RedisService,
   ) {}
   async create(createDto: CreateReservationDto, userId: number) {
     const { movieTitle, seatsReserved } = createDto;
 
-    const showtime: Showtime = await this.movieShowtime.findOne(movieTitle);
+    const showtime = await this.prisma.showtime.findFirst({
+      where: { movie: { title: movieTitle } },
+    });
 
     if (showtime.capacity < seatsReserved) {
-      throw new Error('Not enough seats available');
+      return 'Seats are not available';
     }
 
     const reservation = await this.prisma.reservation.create({
       data: {
-        userId,
-        showtimeId: showtime.id,
+        user: {
+          connect: { id: userId },
+        },
+        showtime: {
+          connect: { id: showtime.id },
+        },
         seatsReserved,
       },
     });
 
-    // Cache the reservation
-    await this.cacheManager.set(
-      `reservation:${reservation.id}`,
-      reservation,
-      3600, // 1 hour
-    );
+    // Update remaining capacity for the showtime
+    await this.prisma.showtime.update({
+      where: { id: showtime.id },
+      data: { capacity: showtime.capacity - seatsReserved },
+    });
+
+    // Invalidate related cache for reservations
+    await this.REDIS.del(`reservations:user:${userId}`);
+    await this.REDIS.del(`reservations:all`);
 
     return reservation;
   }
 
   async findMyReservation(id: number) {
-    const cachedReservations = await this.cacheManager.get(
-      `user-reservations:${id}`,
-    );
-    if (cachedReservations) {
-      return cachedReservations;
+    const cacheKey = `reservations:user:${id}`;
+    const cachedData = await this.REDIS.get<string>(cacheKey);
+
+    if (cachedData) {
+      return JSON.parse(cachedData);
     }
     const reservations = await this.prisma.reservation.findMany({
       where: { userId: id },
       include: { showtime: { include: { movie: true } } },
     });
 
-    // Cache the user's reservations
-    await this.cacheManager.set(
-      `user-reservations:${id}`,
-      reservations,
-      3600, // 1 hour
-    );
+    // Cache the result
+    await this.REDIS.set(cacheKey, JSON.stringify(reservations), 60 * 5); // Cache for 5 minutes
 
-    return reservations;
+    return reservations.length ? reservations : 'No reservations found';
   }
 
   async findAll() {
-    const cachedReservations = await this.cacheManager.get(`all-reservations`);
-    if (cachedReservations) {
-      return cachedReservations;
+    const cacheKey = `reservations:all`;
+    const cachedData = await this.REDIS.get<string>(cacheKey);
+
+    if (cachedData) {
+      return JSON.parse(cachedData);
     }
 
     const reservations = await this.prisma.reservation.findMany({
       include: { showtime: { include: { movie: true } } },
     });
 
-    // Cache all reservations
-    await this.cacheManager.set(`all-reservations`, reservations, 3600);
+    // Cache the result
+    await this.REDIS.set(cacheKey, JSON.stringify(reservations), 60 * 5); // Cache for 5 minutes
 
     return reservations;
   }
 
-  async update(
-    movieTitle: string,
-    updateDto: UpdateReservationDto,
-    userId: number,
-  ) {
-    const showtime: Showtime = await this.movieShowtime.findOne(movieTitle);
-
-    const reservation = await this.prisma.reservation.findFirst({
-      where: { showtimeId: showtime.id },
+  async update(updateDto: UpdateReservationDto, userId: number) {
+    const { seatsReserved, movieTitle } = updateDto;
+    const showtime = await this.prisma.showtime.findFirst({
+      where: { movie: { title: movieTitle } },
     });
 
-    if (!reservation) {
-      throw new NotFoundException(
-        `Reservation not found for movie: ${movieTitle}`,
-      );
+    if (showtime.capacity < seatsReserved) {
+      return 'Seats are not available';
     }
 
-    const updatedReservation = await this.prisma.reservation.update({
-      where: { id: reservation.id, userId },
-      data: updateDto,
+    const reservation = await this.prisma.reservation.findMany({
+      where: { userId, showtimeId: showtime.id },
     });
 
-    // Update the cache
-    await this.cacheManager.set(
-      `reservation:${reservation.id}`,
-      updatedReservation,
-      3600,
-    );
+    const updatedReservation = await this.prisma.reservation.update({
+      where: { id: reservation[0].id, userId },
+      data: {
+        seatsReserved,
+        showtimeId: showtime.id,
+      },
+    });
+
+    // Update remaining capacity for the showtime
+    const seatDifference = seatsReserved - reservation[0].seatsReserved;
+    await this.prisma.showtime.update({
+      where: { id: showtime.id },
+      data: { capacity: showtime.capacity - seatDifference },
+    });
+
+    // Invalidate related cache
+    await this.REDIS.del(`reservations:user:${userId}`);
+    await this.REDIS.del(`reservations:all`);
 
     return updatedReservation;
   }
 
   async remove(movieTitle: string, userId: number) {
-    const showtime = await this.movieShowtime.findOne(movieTitle);
+    const showtime = await this.prisma.showtime.findFirst({
+      where: { movie: { title: movieTitle } },
+    });
 
     const reservation = await this.prisma.reservation.findFirst({
       where: { showtimeId: showtime.id },
@@ -126,10 +136,9 @@ export class ReservationService {
       where: { id: reservation.id, userId },
     });
 
-    // Remove from the cache
-    await this.cacheManager.del(`reservation:${reservation.id}`);
-    await this.cacheManager.del(`user-reservations:${userId}`);
-    await this.cacheManager.del(`all-reservations`);
+    // Invalidate related cache
+    await this.REDIS.del(`reservations:user:${userId}`);
+    await this.REDIS.del(`reservations:all`);
 
     return deletedReservation;
   }

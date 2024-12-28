@@ -31,7 +31,7 @@ export class ShowtimeController {
     return this.showtimeService.findOne(title);
   }
 
-  @Get('/all')
+  @Get('find/all')
   findAll() {
     return this.showtimeService.findAll();
   }

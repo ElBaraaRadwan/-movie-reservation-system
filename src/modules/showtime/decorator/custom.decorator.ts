@@ -6,27 +6,28 @@ import {
 } from 'class-validator';
 
 @ValidatorConstraint({ async: false })
-export class IsCustomDateFormatConstraint
+export class IsISO8601DateFormatConstraint
   implements ValidatorConstraintInterface
 {
   validate(value: string): boolean {
-    const regex = /^\d{4}\/\d{2}\/\d{2}-\d{2}:\d{2}(AM|PM)$/; // Regex for '2024/12/20-12:25PM'
+    const regex =
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})?$/; // Regex for ISO-8601 DateTime format
     return typeof value === 'string' && regex.test(value);
   }
 
   defaultMessage(): string {
-    return 'Date must be in the format YYYY/MM/DD-HH:MMAM/PM (e.g., 2024/12/20-12:25PM)';
+    return 'Date must be in the ISO-8601 format (e.g., 2024-12-20T12:25:00Z)';
   }
 }
 
-export function IsCustomDateFormat(validationOptions?: ValidationOptions) {
+export function IsDateFormat(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
       constraints: [],
-      validator: IsCustomDateFormatConstraint,
+      validator: IsISO8601DateFormatConstraint,
     });
   };
 }

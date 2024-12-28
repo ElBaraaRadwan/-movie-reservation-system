@@ -1,23 +1,14 @@
-import {
-  IsInt,
-  IsNotEmpty,
-  Min,
-  Max,
-} from 'class-validator';
-import { IsCustomDateFormat, IsLocationFormat } from '../decorator';
+import { IsInt, IsNotEmpty, Min, Max } from 'class-validator';
+import { IsDateFormat, IsLocationFormat } from '../decorator';
 
 export class CreateShowtimeDto {
-  @IsInt()
-  @IsNotEmpty()
-  movieId: number;
-
-  @IsCustomDateFormat({
-    message: 'Start time must follow the format YYYY/MM/DD-HH:MMAM/PM',
+  @IsDateFormat({
+    message: 'Start time must be in ISO8601 format',
   })
   startTime: Date;
 
-  @IsCustomDateFormat({
-    message: 'Start time must follow the format YYYY/MM/DD-HH:MMAM/PM',
+  @IsDateFormat({
+    message: 'End time must be in ISO8601 format',
   })
   endTime: Date;
 

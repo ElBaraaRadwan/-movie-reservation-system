@@ -1,65 +1,80 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Cache } from '@nestjs/cache-manager';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject } from '@nestjs/common';
-import { promisify } from 'util';
 
 @Injectable()
 export class RedisService {
+  private readonly logger = new Logger(RedisService.name);
+
   constructor(
-    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache, // Inject Cache Manager
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache, // Inject Cache Manager
   ) {}
 
-  /**
-   * Get a value from Redis by key.
-   * @param key Redis key
-   * @returns The value associated with the key or null if not found.
-   */
   async get<T>(key: string): Promise<T | null> {
-    return (await this.cacheManager.get<T>(key)) || null;
+    try {
+      this.logger.debug(`Fetching key "${key}" from Redis`);
+      return (await this.cacheManager.get<T>(key)) || null;
+    } catch (error) {
+      this.logger.error(`Error getting key "${key}":`, error);
+      throw new InternalServerErrorException(`Failed to get key "${key}"`);
+    }
   }
 
-  /**
-   * Set a value in Redis with an optional TTL.
-   * @param key Redis key
-   * @param value Value to store
-   * @param ttl Time-to-live in seconds (optional)
-   */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
-    await this.cacheManager.set(key, value, ttl);
+    const defaultTTL = parseInt(process.env.DEFAULT_CACHE_TTL, 10) || 3600; // Configurable TTL
+    try {
+      if (!key) throw new InternalServerErrorException('Key must be provided');
+      if (key.includes('/')) {
+        this.logger.debug(`Disregarding key "${key}" with invalid characters`);
+        return;
+      }
+      if (value === undefined || value === null)
+        throw new InternalServerErrorException(
+          'Value must not be null or undefined',
+        );
+
+      await this.cacheManager.set(key, value, ttl ?? defaultTTL);
+      this.logger.debug(
+        `Set key "${key}" in Redis with TTL ${ttl ?? defaultTTL}s`,
+      );
+    } catch (error) {
+      this.logger.error(`Error setting key "${key}":`, error);
+      throw new InternalServerErrorException(`Failed to set key "${key}"`);
+    }
   }
 
-  /**
-   * Delete a value from Redis by key.
-   * @param key Redis key
-   */
   async del(key: string): Promise<void> {
-    await this.cacheManager.del(key);
+    try {
+      this.logger.debug(`Deleting key "${key}" from Redis`);
+      await this.cacheManager.del(key);
+      this.logger.debug(`Key "${key}" deleted from Redis`);
+    } catch (error) {
+      this.logger.error(`Error deleting key "${key}":`, error);
+      throw new InternalServerErrorException(`Failed to delete key "${key}"`);
+    }
   }
 
-  /**
-   * Clean the Redis database.
-   * This function should only be run in the test environment.
-   */
   async cleanDB(): Promise<void> {
-    console.log('Environment:', process.env.NODE_ENV);
+    this.logger.debug('Cleaning Redis database...');
     if (process.env.NODE_ENV !== 'test') {
       throw new Error('cleanDB can only be run in test environment');
     }
-    console.log('Cleaning Redis database...');
 
     try {
-      const client = (this.cacheManager as any).store.getClient();
-      const keysAsync = promisify(client.keys).bind(client);
-      const delAsync = promisify(client.del).bind(client);
-
-      const keys = await keysAsync('*');
+      const client = (this.cacheManager.store as any).getClient();
+      const keys = await client.keys('*');
       if (keys.length > 0) {
-        await delAsync(keys);
+        const pipeline = client.pipeline();
+        keys.forEach((key: string) => pipeline.del(key));
+        await pipeline.exec();
       }
-
-      console.log('Redis database cleaned successfully.');
+      this.logger.debug('Redis database cleaned successfully.');
     } catch (error) {
-      console.error('Redis CleanDB Error:', error);
+      this.logger.error('Redis CleanDB Error:', error);
       throw new InternalServerErrorException('Failed to clean Redis database');
     }
   }

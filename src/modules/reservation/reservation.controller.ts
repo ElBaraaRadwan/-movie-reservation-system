@@ -20,19 +20,12 @@ import { GetUser, Roles } from '../auth/decorator';
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
-  @Post(':title')
-  create(
-    @Param('title') movieTitle: string,
-    @Body() createDto: CreateReservationDto,
-    @GetUser() user: UserEntity,
-  ) {
-    return this.reservationService.create(
-      { ...createDto, movieTitle },
-      user.id,
-    );
+  @Post('create')
+  create(@Body() createDto: CreateReservationDto, @GetUser() user: UserEntity) {
+    return this.reservationService.create(createDto, user.id);
   }
 
-  @Get()
+  @Get('my')
   findMyReservation(@GetUser() user: UserEntity) {
     return this.reservationService.findMyReservation(user.id);
   }
@@ -44,13 +37,9 @@ export class ReservationController {
     return this.reservationService.findAll();
   }
 
-  @Patch(':title')
-  update(
-    @Param('title') movieTitle: string,
-    @Body() updateDto: UpdateReservationDto,
-    @GetUser() user: UserEntity,
-  ) {
-    return this.reservationService.update(movieTitle, updateDto, user.id);
+  @Patch('update')
+  update(@Body() updateDto: UpdateReservationDto, @GetUser() user: UserEntity) {
+    return this.reservationService.update(updateDto, user.id);
   }
 
   @Delete(':title')

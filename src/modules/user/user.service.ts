@@ -1,6 +1,5 @@
 import {
   ConflictException,
-  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -9,14 +8,14 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 import { UserEntity } from './entities/user.entity';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { Cache } from '@nestjs/cache-manager';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
-    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
+    private readonly REDIS: RedisService,
   ) {}
 
   async create(
@@ -26,9 +25,7 @@ export class UserService {
     const { email, password } = DTO;
 
     // Check if the user already exists
-    const existingUser = await this.prisma.user.findFirst({
-      where: { email },
-    });
+    const existingUser = await this.prisma.user.findFirst({ where: { email } });
     if (existingUser) {
       throw new ConflictException('Email already in use');
     }
@@ -42,20 +39,26 @@ export class UserService {
       },
     });
 
-    // Invalidate cache
-    await this.cacheManager.del(`user:${user.id}`);
-    await this.cacheManager.del('users:all');
+    // Invalidate Redis cache for user list
+    await this.REDIS.del('users:all');
 
     return new UserEntity(user);
   }
 
   async findOne(query: Record<string, any>): Promise<UserEntity> {
     try {
-      // Validate and convert query parameters to match Prisma schema types
+      const key = `user:${JSON.stringify(query)}`;
+
+      // Check Redis for cached user
+      const cachedUser = await this.REDIS.get<UserEntity>(key);
+      if (cachedUser) {
+        return new UserEntity(cachedUser);
+      }
+
+      // Query the database for the user
       const parsedQuery: Record<string, any> = {};
       for (const [key, value] of Object.entries(query)) {
         if (key === 'id') {
-          // Parse id as a number if it is expected to be an integer
           parsedQuery[key] = parseInt(value, 10);
           if (isNaN(parsedQuery[key])) {
             throw new Error(`Invalid value for ${key}: ${value}`);
@@ -65,28 +68,15 @@ export class UserService {
         }
       }
 
-      // Generate a cache key based on the parsed query
-      const cacheKey = `user:${JSON.stringify(parsedQuery)}`;
-
-      // Check Redis for cached user
-      const cachedUser = await this.cacheManager.get<UserEntity>(cacheKey);
-      if (cachedUser) {
-        return cachedUser;
-      }
-
-      // Query the database for the user
-      const user = await this.prisma.user.findFirst({
-        where: parsedQuery,
-      });
-
+      const user = await this.prisma.user.findFirst({ where: parsedQuery });
       if (!user) {
-        const queryParams = Object.entries(query)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
-        throw new NotFoundException(`User not found with: ${queryParams}`);
+        throw new NotFoundException(
+          `User not found with: ${JSON.stringify(query)}`,
+        );
       }
 
-      await this.cacheManager.set(cacheKey, user, 300);
+      // Cache the user in Redis
+      await this.REDIS.set(key, user, 3600); // Cache for 1 hour
 
       return new UserEntity(user);
     } catch (error) {
@@ -97,18 +87,20 @@ export class UserService {
 
   // Get all users
   async findAll(): Promise<UserEntity[]> {
-    const cacheKey = 'users:all';
-    const cachedUsers = await this.cacheManager.get<UserEntity[]>(cacheKey);
+    const key = 'users:all';
 
+    // Check Redis for cached user list
+    const cachedUsers = await this.REDIS.get<UserEntity[]>(key);
     if (cachedUsers) {
-      return cachedUsers;
+      return cachedUsers.map((user) => new UserEntity(user));
     }
 
+    // Query the database for all users
     const users = await this.prisma.user.findMany();
     const userEntities = users.map((user) => new UserEntity(user));
 
-    // Cache the result
-    await this.cacheManager.set(cacheKey, userEntities, 300);
+    // Cache the user list in Redis
+    await this.REDIS.set(key, userEntities, 3600); // Cache for 1 hour
 
     return userEntities;
   }
@@ -136,9 +128,10 @@ export class UserService {
       where: { id },
       data: updateUserDto,
     });
-    // Invalidate cache
-    await this.cacheManager.del(`user:${id}`);
-    await this.cacheManager.del('users:all');
+
+    // Invalidate Redis cache for this user and user list
+    await this.REDIS.del(`user:${id}`);
+    await this.REDIS.del('users:all');
 
     return new UserEntity(updatedUser);
   }
@@ -151,9 +144,9 @@ export class UserService {
 
       const deletedUser = await this.prisma.user.delete({ where: { id } });
 
-      // Invalidate cache
-      await this.cacheManager.del(`user:${id}`);
-      await this.cacheManager.del('users:all');
+      // Invalidate Redis cache for this user and user list
+      await this.REDIS.del(`user:${id}`);
+      await this.REDIS.del('users:all');
 
       return new UserEntity(deletedUser);
     } catch (error) {

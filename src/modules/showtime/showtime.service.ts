@@ -1,25 +1,20 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateShowtimeDto } from './dto';
 import { UpdateShowtimeDto } from './dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MovieService } from 'src/modules/movie/movie.service';
-import { Cache } from '@nestjs/cache-manager';
 import { Showtime } from '@prisma/client';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class ShowtimeService {
   constructor(
     private readonly prisma: PrismaService,
     private movieService: MovieService,
-    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
+    private readonly REDIS: RedisService,
   ) {}
   async create(createDto: CreateShowtimeDto, title: string) {
     const movie = await this.movieService.findOneByName(title);
-
-    if (!movie)
-      throw new NotFoundException(`Movie with title ${title} not found`);
-
-    createDto.movieId = movie.id; // Add movieId to createDto
 
     const showTime = await this.prisma.showtime.create({
       data: {
@@ -35,25 +30,21 @@ export class ShowtimeService {
       },
     });
 
-    // Invalidate all showtimes cache
-    await this.cacheManager.del('showtimes:all');
+    // Invalidate related cache
+    await this.REDIS.del(`showtime:all`);
 
     return showTime;
   }
 
   async findOne(title: string): Promise<Showtime> {
-    const cachedShowtime = await this.cacheManager.get<Partial<Showtime>>(
-      `showtime:${title}`,
-    );
+    const cacheKey = `showtime:${title}`;
+    const cachedData = await this.REDIS.get<string>(cacheKey);
 
-    if (cachedShowtime) {
-      // Ensure the cached object matches the Showtime type
-      return cachedShowtime as Showtime;
+    if (cachedData) {
+      return JSON.parse(cachedData);
     }
 
     const movie = await this.movieService.findOneByName(title);
-
-    if (!movie) throw new NotFoundException(`Movie: ${title} not found`);
 
     const showTimes = await this.prisma.showtime.findFirst({
       where: {
@@ -69,26 +60,27 @@ export class ShowtimeService {
         `Showtime not found for movie with title ${title}`,
       );
 
-    // Cache the showtime
-    await this.cacheManager.set(`showtime:${title}`, showTimes, 3600); // Cache for 1 hour
+    // Cache the result
+    await this.REDIS.set(cacheKey, showTimes, 60 * 5); // Cache for 5 minutes
 
     return showTimes;
   }
 
   async findAll() {
-    const cachedShowtimes = await this.cacheManager.get('showtimes:all');
-    if (cachedShowtimes) {
-      return cachedShowtimes;
-    }
+    const cacheKey = `showtime:all`;
+    const cachedData = await this.REDIS.get<string>(cacheKey);
 
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
     const showtimes = await this.prisma.showtime.findMany({
       include: {
         movie: true,
       },
     });
 
-    // Cache all showtimes
-    await this.cacheManager.set('showtimes:all', showtimes, 3600); // Cache for 1 hour
+    // Cache the result
+    await this.REDIS.set(cacheKey, JSON.stringify(showtimes), 60 * 5); // Cache for 5 minutes
 
     return showtimes;
   }
@@ -96,58 +88,33 @@ export class ShowtimeService {
   async update(title: string, updateDto: UpdateShowtimeDto) {
     const movie = await this.movieService.findOneByName(title);
 
-    if (!movie)
-      throw new NotFoundException(`Movie with title ${title} not found`);
-
-    const startTime = updateDto.startTime;
-    const showtime = await this.prisma.showtime.findFirst({
+    const showTime = await this.prisma.showtime.findFirst({
       where: {
         movieId: movie.id,
-        startTime: startTime,
       },
     });
 
-    if (!showtime) {
+    if (!showTime)
       throw new NotFoundException(
-        `Showtime with start time ${startTime} not found for movie with title ${title}`,
+        `Showtime not found for movie with title ${title}`,
       );
-    }
-
-    updateDto.movieId = movie.id; // Add movieId to updateDto
 
     const updatedShowtime = await this.prisma.showtime.update({
       where: {
-        id: showtime.id,
+        id: showTime.id,
       },
       data: updateDto,
     });
 
-    // Update the cache
-    await this.cacheManager.set(
-      `showtime:${title}`,
-      updatedShowtime,
-      3600, // Cache for 1 hour
-    );
-    await this.cacheManager.del('showtimes:all'); // Invalidate all showtimes cache
+    // Invalidate related cache
+    await this.REDIS.del(`showtime:${title}`);
+    await this.REDIS.del(`showtime:all`);
 
     return updatedShowtime;
   }
 
   async remove(title: string) {
-    const movie = await this.movieService.findOneByName(title);
-
-    if (!movie)
-      throw new NotFoundException(`Movie with title ${title} not found`);
-
-    const showtime = await this.prisma.showtime.findFirst({
-      where: { movieId: movie.id },
-    });
-
-    if (!showtime) {
-      throw new NotFoundException(
-        `No showtime found for movie with title "${title}".`,
-      );
-    }
+    const showtime = await this.findOne(title);
 
     const deletedShowtime = await this.prisma.showtime.delete({
       where: {
@@ -155,9 +122,9 @@ export class ShowtimeService {
       },
     });
 
-    // Invalidate cache
-    await this.cacheManager.del(`showtime:${title}`);
-    await this.cacheManager.del('showtimes:all');
+    // Invalidate related cache
+    await this.REDIS.del(`showtime:${title}`);
+    await this.REDIS.del(`showtime:all`);
 
     return deletedShowtime;
   }

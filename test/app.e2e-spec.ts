@@ -3,11 +3,8 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { AppModule } from '../src/app.module';
 import * as pactum from 'pactum';
-import * as fs from 'fs';
 import * as path from 'path';
-import FormData from 'form-data';
 import { CreateUserDto } from '../src/modules/user/dto';
-import { CreateMovieDto } from '../src/modules/movie/dto';
 import { RedisService } from '../src/redis/redis.service';
 import { CloudinaryService } from '../src/modules/movie/cloudinary/cloudinary.service';
 
@@ -21,7 +18,6 @@ describe('APP E2E', () => {
   let admin_refresh_token: string;
   let customer_refresh_token: string;
   let customerDTO: CreateUserDto;
-  let movieDTO: CreateMovieDto;
   let adminDTO: CreateUserDto;
   let adminLoginDTO = { email: 'admin@example.com', password: 'admin123' };
   let customerLoginDTO = {
@@ -30,6 +26,7 @@ describe('APP E2E', () => {
   };
 
   beforeAll(async () => {
+    jest.setTimeout(60000);
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -48,9 +45,11 @@ describe('APP E2E', () => {
     prisma = app.get(PrismaService);
     redis = app.get(RedisService);
     cloudinary = app.get(CloudinaryService);
-    await prisma.cleanDB(); // Clean the database
-    // await redis.cleanDB(); // Clean the redis database
-    // await cloudinary.cleanDB(); // Clean the cloudinary database
+    await Promise.all([
+      prisma.cleanDB(),
+      //   redis.cleanDB(),
+      //   cloudinary.cleanDB(),
+    ]);
     await prisma.seedDB(); // Seed the database
     pactum.request.setBaseUrl('http://localhost:3001');
 
@@ -111,7 +110,9 @@ describe('APP E2E', () => {
           .spec()
           .post('/user/signup/admin')
           .withJson(adminDTO)
-          .withCookies(admin_access_token)
+          .withHeaders({
+            Cookie: admin_access_token,
+          })
           .expectStatus(HttpStatus.CREATED);
       });
 
@@ -120,7 +121,9 @@ describe('APP E2E', () => {
           .spec()
           .post('/user/signup/admin')
           .withJson(adminDTO)
-          .withCookies(admin_access_token)
+          .withHeaders({
+            Cookie: admin_access_token,
+          })
           .expectStatus(HttpStatus.CONFLICT);
       });
 
@@ -129,16 +132,22 @@ describe('APP E2E', () => {
           .spec()
           .post('/user/signup/admin')
           .withJson(customerDTO)
-          .withCookies(customer_access_token)
+          .withHeaders({
+            Cookie: customer_access_token,
+          })
           .expectStatus(HttpStatus.FORBIDDEN);
       });
     });
+
     describe('Logout', () => {
       it('should logout as a customer', async () => {
         await pactum
           .spec()
           .post('/auth/logout')
-          .withCookies(customer_access_token)
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -146,7 +155,10 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .post('/auth/logout')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
     });
@@ -182,7 +194,10 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .post('/auth/refresh')
-          .withCookies(customer_refresh_token)
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
           .expectStatus(HttpStatus.CREATED);
       });
 
@@ -190,7 +205,10 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .post('/auth/refresh')
-          .withCookies(admin_refresh_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.CREATED);
       });
     });
@@ -200,6 +218,7 @@ describe('APP E2E', () => {
         await pactum.spec().get('/auth/google').expectStatus(HttpStatus.FOUND);
       });
     });
+
     describe('Google Callback', () => {
       it('should login with google', async () => {
         await pactum
@@ -208,19 +227,26 @@ describe('APP E2E', () => {
           .expectStatus(HttpStatus.FOUND);
       });
     });
+
     describe('Get User Profile', () => {
       it('should return customer profile', async () => {
         await pactum
           .spec()
           .get('/auth/profile')
-          .withCookies(customer_access_token)
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
       it('should return admin profile', async () => {
         await pactum
           .spec()
           .get('/auth/profile')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
     });
@@ -232,7 +258,10 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/user/all')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -240,10 +269,14 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/user/all')
-          .withCookies(customer_access_token)
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
           .expectStatus(HttpStatus.FORBIDDEN);
       });
     });
+
     describe('Find User', () => {
       it('should return a user using email', async () => {
         await pactum
@@ -276,7 +309,10 @@ describe('APP E2E', () => {
           .spec()
           .patch('/user/1')
           .withJson({ username: 'newAdminUser' })
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -285,7 +321,10 @@ describe('APP E2E', () => {
           .spec()
           .patch('/user/2')
           .withJson({ username: 'newCustomerUser' })
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -294,7 +333,10 @@ describe('APP E2E', () => {
           .spec()
           .patch('/user/30')
           .withJson({ username: 'newCustomerUser' })
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.NOT_FOUND);
       });
     });
@@ -304,7 +346,10 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .delete('/user/2')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -312,19 +357,141 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .delete('/user/30')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.NOT_FOUND);
       });
     });
   });
 
   describe('Movies', () => {
+    describe('Create movie', () => {
+      it('should create a movie', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .withMultiPartFormData({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withFile('poster', posterPath)
+          .withFile('video', videoPath)
+          .expectStatus(HttpStatus.CREATED)
+          .expectJsonLike({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withRequestTimeout(6000);
+      });
+
+      it('should return BAD REQUEST for missing files', async () => {
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .withMultiPartFormData({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+
+      it('should return CONFLICT for existing movie', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .withMultiPartFormData({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withFile('poster', posterPath)
+          .withFile('video', videoPath)
+          .expectStatus(HttpStatus.CONFLICT)
+          .expectJsonLike({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withRequestTimeout(6000);
+      });
+
+      it('should return FORBIDDEN for non admin user', async () => {
+        const posterPath = path.resolve(
+          __dirname,
+          '../src/resources/poster1.jpg',
+        );
+        const videoPath = path.resolve(
+          __dirname,
+          '../src/resources/video1.mp4',
+        );
+
+        await pactum
+          .spec()
+          .post('/movie/create')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withMultiPartFormData({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withFile('poster', posterPath)
+          .withFile('video', videoPath)
+          .expectStatus(HttpStatus.FORBIDDEN)
+          .expectJsonLike({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withRequestTimeout(6000);
+      });
+    });
     describe('Get all movies', () => {
       it('should return all movies to login users', async () => {
         await pactum
           .spec()
           .get('/movie/all')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -340,7 +507,10 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/movie/Inception')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.OK);
       });
 
@@ -348,118 +518,47 @@ describe('APP E2E', () => {
         await pactum
           .spec()
           .get('/movie/FakeName')
-          .withCookies(admin_access_token)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectBody(null);
       });
     });
-    describe('Movie Stream', () => {});
-    describe('Create movie', () => {
-      it('should create a movie', async () => {
-        const posterPath = path.resolve(
-          __dirname,
-          '../src/resources/poster1.jpg',
-        );
-        const videoPath = path.resolve(
-          __dirname,
-          '../src/resources/video1.mp4',
-        );
-
-        // Create a FormData instance
-        const formData = new FormData();
-        formData.append('title', 'New Movie');
-        formData.append('description', 'A great movie');
-        formData.append('genre', 'Drama');
-        formData.append('poster', fs.createReadStream(posterPath));
-        formData.append('video', fs.createReadStream(videoPath));
-
+    describe('Movie Stream', () => {
+      it('should stream a movie', async () => {
+        let movieTitle = 'Inception';
         await pactum
           .spec()
-          .post('/movie/create')
-          .withHeaders({
-            ...formData.getHeaders(),
-            Cookie: admin_access_token,
-          })
-          .withBody(formData)
-          .expectStatus(HttpStatus.CREATED)
-          .expectJsonLike({
-            title: 'New Movie',
-            description: 'A great movie',
-            genre: 'Drama',
-          });
+          .get(`/movie/${movieTitle}/stream`)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
       });
 
-      it('should return BAD REQUEST for missing files', async () => {
-        const formData = new FormData();
-        formData.append('title', 'New Movie');
-        formData.append('description', 'A great movie');
-        formData.append('genre', 'Drama');
-
+      it('should return BAD REQUEST for invalid movie', async () => {
+        let movieTitle = 'FakeName';
         await pactum
           .spec()
-          .post('/movie/create')
-          .withHeaders({
-            ...formData.getHeaders(),
-            Cookie: admin_access_token,
-          })
-          .withBody(formData)
+          .get(`/movie/${movieTitle}/stream`)
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
           .expectStatus(HttpStatus.BAD_REQUEST);
       });
 
-      it('should return CONFLICT for existing movie', async () => {
-        const posterPath = path.resolve(
-          __dirname,
-          '../src/resources/poster1.jpg',
-        );
-        const videoPath = path.resolve(
-          __dirname,
-          '../src/resources/video1.mp4',
-        );
-
-        // Create a FormData instance
-        const formData = new FormData();
-        formData.append('title', 'Inception');
-        formData.append('description', 'A great movie');
-        formData.append('genre', 'Drama');
-        formData.append('poster', fs.createReadStream(posterPath));
-        formData.append('video', fs.createReadStream(videoPath));
-
-        await pactum
-          .spec()
-          .post('/movie/create')
-          .withHeaders({
-            ...formData.getHeaders(),
-            Cookie: admin_access_token,
-          })
-          .withBody(formData)
-          .expectStatus(HttpStatus.CONFLICT);
-      });
-
       it('should return FORBIDDEN for non admin user', async () => {
-        const posterPath = path.resolve(
-          __dirname,
-          '../src/resources/poster1.jpg',
-        );
-        const videoPath = path.resolve(
-          __dirname,
-          '../src/resources/video1.mp4',
-        );
-
-        // Create a FormData instance
-        const formData = new FormData();
-        formData.append('title', 'New Movie');
-        formData.append('description', 'A great movie');
-        formData.append('genre', 'Drama');
-        formData.append('poster', fs.createReadStream(posterPath));
-        formData.append('video', fs.createReadStream(videoPath));
-
+        let movieTitle = 'Inception';
         await pactum
           .spec()
-          .post('/movie/create')
-          .withHeaders({
-            ...formData.getHeaders(),
-            Cookie: customer_access_token,
-          })
-          .withBody(formData)
+          .get(`/movie/${movieTitle}/stream`)
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
           .expectStatus(HttpStatus.FORBIDDEN);
       });
     });
@@ -474,45 +573,47 @@ describe('APP E2E', () => {
           '../src/resources/video1.mp4',
         );
 
-        // Create a FormData instance
-        const formData = new FormData();
-        formData.append('title', 'Inception');
-        formData.append('description', 'A great movie');
-        formData.append('genre', 'Drama');
-        formData.append('poster', fs.createReadStream(posterPath));
-        formData.append('video', fs.createReadStream(videoPath));
-
         await pactum
           .spec()
           .patch('/movie/Inception')
           .withHeaders({
-            ...formData.getHeaders(),
             Cookie: admin_access_token,
           })
-          .withBody(formData)
-          .expectStatus(HttpStatus.OK)
-          .expectJsonLike({
-            title: 'Inception',
+          .withMultiPartFormData({
+            title: 'New Movie',
             description: 'A great movie',
             genre: 'Drama',
-          });
+          })
+          .withFile('poster', posterPath)
+          .withFile('video', videoPath)
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLike({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withRequestTimeout(6000);
       });
 
       it('should return BAD REQUEST for missing files', async () => {
-        const formData = new FormData();
-        formData.append('title', 'Inception');
-        formData.append('description', 'A great movie');
-        formData.append('genre', 'Drama');
-
         await pactum
           .spec()
           .patch('/movie/Inception')
           .withHeaders({
-            ...formData.getHeaders(),
             Cookie: admin_access_token,
           })
-          .withBody(formData)
-          .expectStatus(HttpStatus.BAD_REQUEST);
+          .withMultiPartFormData({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST)
+          .expectJsonLike({
+            title: 'New Movie',
+            description: 'A great movie',
+            genre: 'Drama',
+          })
+          .withRequestTimeout(6000);
       });
     });
     describe('Delete movie', () => {
@@ -534,19 +635,317 @@ describe('APP E2E', () => {
     });
   });
 
-  //   describe('Showtimes', () => {
-  //     describe('Get all showtimes', () => {});
-  //     describe('Get showtime by title', () => {});
-  //     describe('Create showtime', () => {});
-  //     describe('Update showtime', () => {});
-  //     describe('Delete showtime', () => {});
-  //   });
+  describe('Showtimes', () => {
+    describe('Create showtime', () => {
+      it('should create a showtime', async () => {
+        await pactum
+          .spec()
+          .post('/showtime/create')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .withJson({
+            title: 'Inception',
+            date: '2021-12-12',
+            time: '12:00',
+            capacity: 100,
+          })
+          .expectStatus(HttpStatus.CREATED);
+      });
 
-  //   describe('Reservations', () => {
-  //     describe('Create reservation', () => {});
-  //     describe('Get All reservations', () => {});
-  //     describe('Get my reservations', () => {});
-  //     describe('Update reservation', () => {});
-  //     describe('Delete reservation', () => {});
-  //   });
+      it('should return FORBIDDEN for non admin user', async () => {
+        await pactum
+          .spec()
+          .post('/showtime/create')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withJson({
+            title: 'Inception',
+            date: '2021-12-12',
+            time: '12:00',
+            capacity: 100,
+          })
+          .expectStatus(HttpStatus.FORBIDDEN);
+      });
+    });
+    describe('Get all showtimes', () => {
+      it('should return all showtimes', async () => {
+        await pactum
+          .spec()
+          .get('/showtime/all')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
+      });
+    });
+    describe('Get showtime by title', () => {
+      it('should return a showtime by title', async () => {
+        await pactum
+          .spec()
+          .get('/showtime/Inception')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return NULL for invalid showtime', async () => {
+        await pactum
+          .spec()
+          .get('/showtime/FakeName')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .expectBody(null);
+      });
+    });
+    describe('Update showtime', () => {
+      it('should update a showtime', async () => {
+        await pactum
+          .spec()
+          .patch('/showtime/Inception')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .withJson({
+            title: 'Inception',
+            date: '2021-12-12',
+            time: '12:00',
+            capacity: 100,
+          })
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return BAD REQUEST for invalid showtime', async () => {
+        await pactum
+          .spec()
+          .patch('/showtime/FakeName')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .withJson({
+            title: 'Inception',
+            date: '2021-12-12',
+            time: '12:00',
+            capacity: 100,
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+
+      it('should return FORBIDDEN for non admin user', async () => {
+        await pactum
+          .spec()
+          .patch('/showtime/Inception')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withJson({
+            title: 'Inception',
+            date: '2021-12-12',
+            time: '12:00',
+            capacity: 100,
+          })
+          .expectStatus(HttpStatus.FORBIDDEN);
+      });
+    });
+    describe('Delete showtime', () => {
+      it('should delete a showtime', async () => {
+        await pactum
+          .spec()
+          .delete('/showtime/Inception')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return FORBIDDEN for non admin user', async () => {
+        await pactum
+          .spec()
+          .delete('/showtime/Inception')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.FORBIDDEN);
+      });
+    });
+  });
+
+  describe('Reservations', () => {
+    describe('Create reservation', () => {
+      it('should create a reservation', async () => {
+        await pactum
+          .spec()
+          .post('/reservation/create')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withJson({
+            title: 'Inception',
+            seatsReserved: 2,
+          })
+          .expectStatus(HttpStatus.CREATED);
+      });
+
+      it('should return FORBIDDEN for non login user', async () => {
+        await pactum
+          .spec()
+          .post('/reservation/create')
+          .withJson({
+            title: 'Inception',
+            seatsReserved: 2,
+          })
+          .expectStatus(HttpStatus.UNAUTHORIZED);
+      });
+
+      it('should return BAD REQUEST for invalid showtime', async () => {
+        await pactum
+          .spec()
+          .post('/reservation/create')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withJson({
+            title: 'FakeName',
+            seatsReserved: 2,
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
+    describe('Get All reservations', () => {
+      it('should return all reservations', async () => {
+        await pactum
+          .spec()
+          .get('/reservation/all')
+          .withHeaders(
+            'Cookie',
+            `${admin_access_token}; ${admin_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return UNAUTHORIZED for non login user', async () => {
+        await pactum
+          .spec()
+          .get('/reservation/all')
+          .expectStatus(HttpStatus.UNAUTHORIZED);
+      });
+
+      it('should return FORBIDDEN for non admin user', async () => {
+        await pactum
+          .spec()
+          .get('/reservation/all')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.FORBIDDEN);
+      });
+    });
+    describe('Get my reservations', () => {
+      it('should return all reservations', async () => {
+        await pactum
+          .spec()
+          .get('/reservation/my')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return UNAUTHORIZED for non login user', async () => {
+        await pactum
+          .spec()
+          .get('/reservation/my')
+          .expectStatus(HttpStatus.UNAUTHORIZED);
+      });
+    });
+    describe('Update reservation', () => {
+      it('should update a reservation', async () => {
+        await pactum
+          .spec()
+          .patch('/reservation/update')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withJson({
+            seatsReserved: 3,
+            movieTitle: 'Inception',
+          })
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return Seats are not available', async () => {
+        await pactum
+          .spec()
+          .patch('/reservation/update')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .withJson({
+            seatsReserved: 300,
+            movieTitle: 'Inception',
+          })
+          .expectBody('Seats are not available');
+      });
+
+      it('should return UNAUTHORIZED for non login user', async () => {
+        await pactum
+          .spec()
+          .patch('/reservation/update')
+          .withJson({
+            seatsReserved: 3,
+            movieTitle: 'Inception',
+          })
+          .expectStatus(HttpStatus.UNAUTHORIZED);
+      });
+    });
+    describe('Delete reservation', () => {
+      it('should delete a reservation', async () => {
+        await pactum
+          .spec()
+          .delete('/reservation/Inception')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.OK);
+      });
+
+      it('should return NOT FOUND for invalid reservation', async () => {
+        await pactum
+          .spec()
+          .delete('/reservation/FakeName')
+          .withHeaders(
+            'Cookie',
+            `${customer_access_token}; ${customer_refresh_token}`,
+          )
+          .expectStatus(HttpStatus.NOT_FOUND);
+      });
+
+      it('should return UNAUTHORIZED for non login user', async () => {
+        await pactum
+          .spec()
+          .delete('/reservation/Inception')
+          .expectStatus(HttpStatus.UNAUTHORIZED);
+      });
+    });
+  });
 });

@@ -158,28 +158,32 @@ export class CloudinaryService {
     console.log('Cleaning Cloudinary resources...');
 
     try {
-      // Delete all images
+      // Delete all images in bulk
       const imageResources = await cloudinary.api.resources({
         resource_type: 'image',
         type: 'upload',
         max_results: 500,
       });
-
-      for (const resource of imageResources.resources) {
-        await cloudinary.uploader.destroy(resource.public_id, {
+      const imageIds = imageResources.resources.map(
+        (resource) => resource.public_id,
+      );
+      if (imageIds.length > 0) {
+        await cloudinary.api.delete_resources(imageIds, {
           resource_type: 'image',
         });
       }
 
-      // Delete all videos
+      // Delete all videos in bulk
       const videoResources = await cloudinary.api.resources({
         resource_type: 'video',
         type: 'upload',
         max_results: 500,
       });
-
-      for (const resource of videoResources.resources) {
-        await cloudinary.uploader.destroy(resource.public_id, {
+      const videoIds = videoResources.resources.map(
+        (resource) => resource.public_id,
+      );
+      if (videoIds.length > 0) {
+        await cloudinary.api.delete_resources(videoIds, {
           resource_type: 'video',
         });
       }

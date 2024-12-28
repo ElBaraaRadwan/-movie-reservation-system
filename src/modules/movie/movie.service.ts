@@ -4,7 +4,6 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
-  Inject,
   ConflictException,
 } from '@nestjs/common';
 import { CreateMovieDto, UpdateMovieDto } from './dto';
@@ -15,16 +14,16 @@ import * as ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import FFprobeMetadata from './movie-interace';
-import { Cache } from '@nestjs/cache-manager';
 import { CloudinaryService } from './cloudinary/cloudinary.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class MovieService {
   constructor(
     private readonly prisma: PrismaService,
     private cloudinary: CloudinaryService,
-    @Inject('CACHE_MANAGER') private readonly cacheManager: Cache,
+    private readonly REDIS: RedisService,
   ) {}
 
   private async determineMetadata(
@@ -129,22 +128,21 @@ export class MovieService {
     }
 
     // Check if movie already exists
-    if (await this.findOneByName(title))
-      throw new ConflictException(`Movie: ${title} already exists`);
+    const existingMovie = await this.prisma.movie.findFirst({
+      where: { title },
+    });
+
+    if (existingMovie) {
+      throw new ConflictException('Movie already exists');
+    }
 
     const { poster, video } = files;
-    // Validate files
-    const { posterFile, videoFile } = await this.validateFiles(poster, video);
-
-    // Determine resolution based on video file metadata
-    const { resolution, duration } = await this.determineMetadata(videoFile); // Await the resolution determination
+    const { posterFile, videoFile } = await this.validateFiles(poster, video); // Validate files
+    const { resolution, duration } = await this.determineMetadata(videoFile); // Determine resolution based on video file metadata
 
     // Upload files to Cloudinary
     const posterUpload = await this.cloudinary.upload(posterFile, 'posters');
     const videoUpload = await this.cloudinary.upload(videoFile, 'videos');
-
-    console.log('Poster upload result:', posterUpload);
-    console.log('Video upload result:', videoUpload);
 
     const createMovie = await this.prisma.movie.create({
       data: {
@@ -158,7 +156,9 @@ export class MovieService {
       },
     });
 
-    await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
+    // Invalidate Redis cache for movie list
+    await this.REDIS.del('movies:all');
+
     return createMovie;
   }
 
@@ -184,8 +184,10 @@ export class MovieService {
 
   // Find all movies
   async findAll() {
-    const cacheKey = 'all_movies';
-    const cachedMovies = await this.cacheManager.get<Movie[]>(cacheKey);
+    const key = 'movies:all';
+
+    // Check Redis cache for movies
+    const cachedMovies = await this.REDIS.get<Movie[]>(key);
     if (cachedMovies) {
       return cachedMovies;
     }
@@ -193,14 +195,19 @@ export class MovieService {
     const movies = await this.prisma.movie.findMany({
       include: { showtimes: true },
     });
-    await this.cacheManager.set(cacheKey, movies, 600); // Cache for 10 minutes
+
+    // Cache the movies in Redis
+    await this.REDIS.set(key, movies, 3600); // Cache for 1 hour
+
     return movies;
   }
 
   // Find a movie by Title
   async findOneByName(title: string): Promise<Movie | null> {
-    const cacheKey = `movie:${title}`;
-    const cachedMovie = await this.cacheManager.get<Movie>(cacheKey);
+    const key = `movie:${title}`;
+
+    // Check Redis cache for the movie
+    const cachedMovie = await this.REDIS.get<Movie>(key);
     if (cachedMovie) {
       return cachedMovie;
     }
@@ -210,11 +217,14 @@ export class MovieService {
       include: { showtimes: true },
     });
 
-    if (movie) {
-      await this.cacheManager.set(cacheKey, movie, 600); // Cache for 10 minutes
+    if (!movie) {
+      throw new NotFoundException(`Movie with Title "${title}" not found`);
     }
 
-    return movie || null; // Return null if no movie is found
+    // Cache the movie in Redis
+    await this.REDIS.set(key, movie, 3600); // Cache for 1 hour
+
+    return movie;
   }
 
   // Update a movie by Title
@@ -225,9 +235,6 @@ export class MovieService {
   ) {
     // Fetch the movie by title
     const movie = await this.findOneByName(title);
-    if (!movie) {
-      throw new NotFoundException(`Movie with Title "${title}" not found`);
-    }
 
     // Validate and upload new poster
     const { poster, video } = files;
@@ -266,9 +273,9 @@ export class MovieService {
       data: updates,
     });
 
-    // Invalidate cache for the updated movie and all movies
-    await this.cacheManager.del(`movie:${movie.title}`);
-    await this.cacheManager.del('all_movies');
+    // Invalidate Redis cache for this movie and movie list
+    await this.REDIS.del(`movie:${title}`);
+    await this.REDIS.del('movies:all');
 
     return updatedMovie;
   }
@@ -276,15 +283,15 @@ export class MovieService {
   // Delete a movie by Title
   async remove(title: string) {
     const movie = await this.findOneByName(title);
-    if (!movie) {
-      throw new NotFoundException(`Movie with Title ${title} not found`);
-    }
+
     const delMovie = await this.prisma.movie.delete({
       where: { id: movie.id },
     });
 
-    await this.cacheManager.del(`movie:${title}`); // Invalidate cache for the deleted movie
-    await this.cacheManager.del('all_movies'); // Invalidate cache for all movies
+    // Invalidate Redis cache for this movie and movie list
+    await this.REDIS.del(`movie:${title}`);
+    await this.REDIS.del('movies:all');
+
     return delMovie;
   }
 }

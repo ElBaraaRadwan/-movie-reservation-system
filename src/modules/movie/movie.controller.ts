@@ -50,7 +50,7 @@ export class MovieController {
     return this.movieService.create(dto, files);
   }
 
-  @Get('stream/:title')
+  @Get(':title/stream')
   streamMovie(
     @Param('title') title: string,
     @Res() res: Response,
