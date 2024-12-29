@@ -21,6 +21,12 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'Login successful. Tokens are set in cookies.',
+    schema: {
+      example: {
+        email: 'user@example.com',
+        password: 'password',
+      },
+    },
   })
   @ApiResponse({
     status: 401,
