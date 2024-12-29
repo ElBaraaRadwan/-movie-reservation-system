@@ -171,6 +171,12 @@ The Swagger API documentation is accessible once the application is running. Vis
 http://localhost:3000/api-docs
 ```
 
+### Project URL
+
+[Movie Reservation System on Postman](https://github.com/ElBaraaRadwan/movie-reservation-system).
+
+---
+
 ---
 
 ## License
