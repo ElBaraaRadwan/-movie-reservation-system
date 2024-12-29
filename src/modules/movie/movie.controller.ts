@@ -20,19 +20,61 @@ import { Role } from '@prisma/client';
 import { JwtGuard, RolesGuard } from '../auth/guard';
 import { Roles } from '../auth/decorator';
 import { Request, Response } from 'express';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 
+@ApiTags('Movies')
+@ApiBearerAuth()
 @UseGuards(JwtGuard)
 @Controller('movie')
 export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
+  @ApiOperation({ summary: 'Create a new movie' })
+  @ApiResponse({
+    status: 201,
+    description: 'Movie created successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation errors',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Movie creation data with optional poster and video files',
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', example: 'Inception' },
+        description: {
+          type: 'string',
+          example: 'A mind-bending thriller about dreams within dreams.',
+        },
+        genre: { type: 'string', example: 'Sci-Fi' },
+        poster: {
+          type: 'string',
+          format: 'binary',
+        },
+        video: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @Post('/create')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'poster', maxCount: 1 }, // Expecting 1 file for 'poster'
-      { name: 'video', maxCount: 1 }, // Expecting 1 file for 'video'
+      { name: 'poster', maxCount: 1 },
+      { name: 'video', maxCount: 1 },
     ]),
   )
   async create(
@@ -50,6 +92,15 @@ export class MovieController {
     return this.movieService.create(dto, files);
   }
 
+  @ApiOperation({ summary: 'Stream a movie by title' })
+  @ApiResponse({
+    status: 200,
+    description: 'Movie streaming started',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Movie not found',
+  })
   @Get(':title/stream')
   streamMovie(
     @Param('title') title: string,
@@ -59,23 +110,69 @@ export class MovieController {
     return this.movieService.streamMovie(title, req, res);
   }
 
+  @ApiOperation({ summary: 'Get all movies' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all movies',
+  })
   @Get('all')
   findAll() {
     return this.movieService.findAll();
   }
 
+  @ApiOperation({ summary: 'Get details of a movie by title' })
+  @ApiResponse({
+    status: 200,
+    description: 'Movie details retrieved successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Movie not found',
+  })
   @Get(':title')
   findOneByName(@Param('title') title: string) {
     return this.movieService.findOneByName(title);
   }
 
+  @ApiOperation({ summary: 'Update movie details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Movie updated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Movie not found',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Updated movie data with optional poster and video files',
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', example: 'Inception' },
+        description: {
+          type: 'string',
+          example: 'Updated description for the movie.',
+        },
+        genre: { type: 'string', example: 'Sci-Fi' },
+        poster: {
+          type: 'string',
+          format: 'binary',
+        },
+        video: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @Patch(':title')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'poster', maxCount: 1 }, // Expecting 1 file for 'poster'
-      { name: 'video', maxCount: 1 }, // Expecting 1 file for 'video'
+      { name: 'poster', maxCount: 1 },
+      { name: 'video', maxCount: 1 },
     ]),
   )
   async update(
@@ -94,6 +191,15 @@ export class MovieController {
     return this.movieService.update(title, updateDto, files);
   }
 
+  @ApiOperation({ summary: 'Delete a movie by title' })
+  @ApiResponse({
+    status: 200,
+    description: 'Movie deleted successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Movie not found',
+  })
   @Delete(':title')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)

@@ -1,8 +1,8 @@
 {
   "name": "movie-reservation-system",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "This project serves as a scalable backend for managing movie data, showtimes, reservations, and user authentication.",
+  "author": "El-Baraa Radwan",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -36,6 +36,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/swagger": "^8.1.0",
     "@prisma/client": "^6.0.1",
     "@swc/core": "*",
     "@swc/jest": "^0.2.37",
@@ -55,10 +56,9 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
-    "passport-microsoft": "^2.1.0",
     "redis": "^4.7.0",
-    "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "swagger-ui": "^5.18.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
